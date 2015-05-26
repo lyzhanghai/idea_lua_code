@@ -101,6 +101,7 @@
 	"pageSize":每页条数,
 	"forum_name":
 	"forum_description"
+	"forum_admin_list":版主信息.
 	"topic_list":[
 		{id: id,
 		title:标题,

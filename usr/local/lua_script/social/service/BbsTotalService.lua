@@ -252,12 +252,14 @@ function M:addPostNumber(bbsid)
     else
         local status, err = db:set(key, 1)
     end
-    local isHistoryExists = db:exists(history_key);
-    if isHistoryExists then
-        db:incr(history_key, 1);
-    else
-        db:set(history_key, 1)
-    end
+
+--    local isHistoryExists = db:exists(history_key);
+--    if isHistoryExists then
+--        db:incr(history_key, 1);
+--    else
+--        db:set(history_key, 1)
+--    end
+    db:hincr("social_bbs_" .. bbsid, 'total_post', 1);--总帖数加1
     -------------------------------------------------------
     -- 删除前天的数据.
     local b_yesterday = tostring(date(os.date("%Y%m%d")):adddays(-2):fmt("%Y%m%d"))
@@ -268,6 +270,18 @@ function M:addPostNumber(bbsid)
     if isBYesterdayExists then
         db:del(b_yesterday_key); --删除前天的数据.
     end
+end
+
+-------------------------------------------------------------------------
+--设置总主题帖数
+function M:addTopicTotalNumber(bbsid)
+    if bbsid == nil or string.len(bbsid) == 0 then
+        error("bbsid 不能为空.")
+    end
+    local db = SsdbUtil:getDb();
+    local status =  db:hincr("social_bbs_" .. bbsid, 'total_topic', 1);--总帖数加1
+
+    log.debug("总主题帖数加1: "..tostring(status));
 end
 
 
@@ -316,14 +330,37 @@ function M:getHistoryPostTotal(bbsid)
     if bbsid == nil or string.len(bbsid) == 0 then
         error("bbsid 不能为空.")
     end
-    local history_key = "social_bbs_%s_history_total"
-    history_key = string.format(history_key, bbsid);
-    log.debug("获取此论坛历史总帖数：key:" .. history_key)
+--    local history_key = "social_bbs_%s_history_total"
+--    history_key = string.format(history_key, bbsid);
+--    log.debug("获取此论坛历史总帖数：key:" .. history_key)
+--    local db = SsdbUtil:getDb();
+--    local count = db:get(history_key)
+--    local number = 0;
+--    if count and count[1] and string.len(count[1]) > 0 then
+--        number = tonumber(count[1]);
+--    end
+--    return number;
     local db = SsdbUtil:getDb();
-    local count = db:get(history_key)
+    local totala = db:hget("social_bbs_" .. bbsid, "total_post");
     local number = 0;
-    if count and count[1] and string.len(count[1]) > 0 then
-        number = tonumber(count[1]);
+    if totala and totala[1] and string.len(totala[1]) > 0 then
+        number = tonumber(totala[1]);
+    end
+    return number;
+end
+
+----------------------------------------------------------------------------------
+--获取此bbs论坛的历史总主题贴数
+function M:getTopicTotalNumber(bbsid)
+    if bbsid == nil or string.len(bbsid) == 0 then
+        error("bbsid 不能为空.")
+    end
+    local db = SsdbUtil:getDb();
+    local totala = db:hget("social_bbs_" .. bbsid, "total_topic");
+    local number = 0;
+    log.debug(totala)
+    if totala and totala[1] and string.len(totala[1]) > 0 then
+        number = tonumber(totala[1]);
     end
     return number;
 end

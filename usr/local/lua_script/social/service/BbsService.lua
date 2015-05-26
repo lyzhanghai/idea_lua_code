@@ -121,7 +121,7 @@ function BbsService:getForumByIdFromSsdb(fourmid)
     if fourmid == nil or string.len(fourmid) == 0 then
         error("fourmid 不能为空.")
     end
-    local keys = { "id", "name", "icon_url", "last_post_time", "total_topic", "total_topic_post", "description" }
+    local keys = { "id", "name", "icon_url", "last_post_time", "total_topic", "total_topic_post", "description","forum_admin_list" }
     local db = SsdbUtil:getDb();
     local fourm = db:multi_hget("social_bbs_forum_" .. fourmid, unpack(keys))
     util:log_r_keys("social_bbs_forum_" .. fourmid, "multi_hget")
@@ -132,7 +132,18 @@ function BbsService:getForumByIdFromSsdb(fourmid)
     return _fourm;
 end
 
-
+----------------------------------------------------------------------------------
+-----获取版主信息.
+----@param #string forumid
+--function BbsService:getForumAdminList(forumid)
+--    local db = SsdbUtil:getDb();
+--    local forumAdminStrA = db:hget("social_bbs_forum_"..forumid,"forum_admin_list")
+--    local forumAdminList = "";
+--    if forumAdminStrA and forumAdminStrA[1] and string.len(forumAdminStrA[1]) > 0 then
+--        forumAdminList = tostring(forumAdminStrA[1]);
+--    end
+--    return forumAdminList;
+--end
 
 
 --------------------------------------------------------------------------------
@@ -354,8 +365,9 @@ local function getSchollList(queryResult)
                 local bbsResult = db:multi_hget("social_bbs_" .. rbbsid[1], unpack(keys))
                 if bbsResult and #bbsResult > 0 then
                     local bbs = util:multi_hget(bbsResult, keys) --工具实现对multi_hget解析
-                    resTempSchoolResult.total = bbs.total;
-                    resTempSchoolResult.total_topic = bbs.total_topic;
+                    local totalService = require("social.service.BbsTotalService")
+                    resTempSchoolResult.total =  totalService:getHistoryPostTotal(rbbsid[1]);
+                    resTempSchoolResult.total_topic = totalService:getTopicTotalNumber(rbbsid[1]);
                     resTempSchoolResult.logo_url = bbs.logo_url;
                     resTempSchoolResult.isopen = true
                     resTempSchoolResult.icon_url = bbs.icon_url;
@@ -400,8 +412,9 @@ local function getOrgInfoList(regionId, orgType)
                 local bbsResult = db:multi_hget("social_bbs_" .. rbbsid[1], unpack(keys))
                 if bbsResult and #bbsResult > 0 then
                     local bbs = util:multi_hget(bbsResult, keys) --工具实现对multi_hget解析
-                    result.total = bbs.total;
-                    result.total_topic = bbs.total_topic;
+                    local totalService = require("social.service.BbsTotalService")
+                    result.total =  totalService:getHistoryPostTotal(rbbsid[1]);
+                    result.total_topic = totalService.getTopicTotalNumber(rbbsid[1]);
                     result.logo_url = bbs.logo_url;
                     result.isopen = true
                     result.icon_url = bbs.icon_url;

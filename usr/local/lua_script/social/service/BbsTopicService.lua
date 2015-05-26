@@ -293,6 +293,7 @@ local function getBeforeMonth(n)
     return date;
 end
 
+
 -----------------------------------------------------------------------------
 -- 获取主题帖列表.
 -- @param #string bbsid 论坛id.
@@ -376,6 +377,7 @@ function M:getTopicsFromSsdb(bbsid, forumid, categoryid, searchText, filterDate,
         local forum = bbsService:getForumByIdFromSsdb(forumid)
         topic.forum_name = (forum.name == nil and "") or forum.name
         topic.forum_description = (forum.description == nil and "") or forum.description
+        topic.forum_admin_list = forum.forum_admin_list;
     end
     topic.topic_list = {}
     local db = SsdbUtil:getDb();

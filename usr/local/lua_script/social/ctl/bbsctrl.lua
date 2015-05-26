@@ -91,6 +91,7 @@ local function topicSave()
     totalService:addForumTopicCurrentDateNumber(bbsid, forumid)
 
     totalService:addPostNumber(bbsid) --对此论坛的总帖数+1
+    totalService:addTopicTotalNumber(bbsid)
 
     BbsService:updatePostForumToDb(forumid, topicid)
     BbsService:updatePostForumToSsdb(forumid, topicid)

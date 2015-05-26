@@ -110,7 +110,7 @@ if forum_id and len(forum_id) > 0 then
 	end
 
 	--update ssdb
-	ssdb:multi_hset("social_bbs_forum_"..forum_id, "name", name, "icon_url", icon_url, "description", description, "sequence", sequence)
+	ssdb:multi_hset("social_bbs_forum_"..forum_id, "name", name, "icon_url", icon_url, "description", description, "sequence", sequence, "forum_admin_list", cjson.encode(forum_admin_t))
 else
 	--insert mysql
 	forum_id = ssdb:incr("social_bbs_forum_pk")[1]
@@ -145,6 +145,7 @@ else
 	forum.total_topic = 0
 	forum.total_post = 0
 	forum.last_post_id = 0
+	forum.forum_admin_list = cjson.encode(forum_admin_t)
 	ssdb:multi_hset("social_bbs_forum_"..forum_id, forum)
 
 	local fids_t, err = ssdb:hget("social_bbs_include_forum", "partition_id_"..partition_id)

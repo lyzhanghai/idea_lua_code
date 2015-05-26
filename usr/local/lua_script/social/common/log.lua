@@ -48,7 +48,7 @@ for i, x in ipairs(modes) do
         end
         local msg = tostring(...)
         local info = debug.getinfo(2, "Sl")
-        local name = string.match(info.short_src, ".+\\([^\\]*%.%w+)$");
+        local name = string.match(info.short_src,".+/([^/]*%.%w+)$");
         local src_name = (name == nil and "") or name
         local lineinfo = src_name .. ":" .. info.currentline
         if Log.outfile then

@@ -513,7 +513,7 @@ end
 -- 通过主题帖id删除主题帖 ssdb
 -- 同时删除主题帖下的回复帖.
 -- @
-function M:deletTopicByIdToDb(topicid)
+function M:deletTopicByIdToSsDb(topicid)
     if topicid == nil or string.len(topicid) == 0 then
         error("topicid不能为空.")
     end
@@ -529,7 +529,7 @@ function M:deletTopicByIdToDb(topicid)
             for _, pid in pairs(postids) do
                 if string.len(pid) > 0 then
                     local service = require("social.service.BbsPostService")
-                    local r = service:deletPostByIdToDb(topicid, pid)
+                    local r = service:deletPostByIdToSsDb(topicid, pid)
                     if r then
                         log.debug("删除topicid:" .. topicid .. " postid:" .. pid .. "成功.")
                     else
@@ -537,11 +537,11 @@ function M:deletTopicByIdToDb(topicid)
                     end
                 end
             end
-            return true;
         end
-        return false;
+        return true;
     else
         log.debug("删除topicid:" .. topicid .. "失败.")
+        return false;
     end
 end
 

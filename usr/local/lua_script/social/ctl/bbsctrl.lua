@@ -308,8 +308,10 @@ local function delTopic()
     local topicId = request:getStrParam("topic_id", true, true)
     local service = getService("BbsTopicService")
     local db_status = service:deletTopicByIdToDb(topicId)
-    local ssdb_status = service:deletTopicByIdToDb(topicId)
+    local ssdb_status = service:deletTopicByIdToSsDb(topicId)
     local r = { success = false, info = { name = "", data = "成功" } }
+    log.debug("db_status: "..tostring(db_status));
+    log.debug("ssdb_status:"..tostring(ssdb_status));
     if db_status and ssdb_status then
         r.success = true;
         ngx.say(cjson.encode(r))

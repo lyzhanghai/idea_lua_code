@@ -1,0 +1,201 @@
+首页面
+==================================================================
+1.接口地址：/dsideal_yy/ypt/bbs/index
+2.前台传参：	bbs_id：论坛id
+3.返回值：
+{
+	"success":true, 
+	--"bbs": 如果开通，同时返回论坛id
+	"total_today":今日帖数,
+	"total_yestoday":昨日帖数,
+	"total":帖子总数,
+	"bbs_id":11
+	"name":理想论坛
+	"logo_url":
+	"icon_url":
+	"domain":
+	"partition_list":[
+		"id":
+		"name"：分区名称
+		"sequence"：1
+		"forum_list":[
+			"id":
+			"name":
+			"total_topic":此版块主题帖数(包括历史)
+			"total_topic_post":主题帖+回复帖数(包括历史)
+			"last_post_time":
+		],[
+			"id":
+			"name":
+			"total_topic":
+			"total_topic_post":
+			"last_post_time":
+		]
+		
+	],[
+		"name"：分区名称
+		"sequence"：2
+	]
+	
+}
+{
+	"success":false, 
+	"info":"参数错误 or 请求失败！"
+}
+================================================================================
+获取版块的详细信息id
+================================================================================
+主题帖列表 GET方式
+1.接口地址：/dsideal_yy/ypt/bbs/topic/list
+2.前台传参：	bbs_id：论坛id 
+			forum_id: 版块id
+			category_id:分类id(可以为空)
+			pageNumber : 页码
+			pageSize: 每页显示条数.
+3.返回值：
+
+{
+	"success":true, 
+	"bbs": 如果开通，同时返回论坛id,
+	"total_today":今日主题帖数,
+	"total_topic":主题帖总数(包括历史),
+	"pageNumber": 1,
+	"totalPage": 总页数,
+	"totalRow":总记录数,
+	"pageSize":每页条数,
+	"topic_list":[
+		{id: id,
+		title:标题,
+		category_name:分类名称,
+		person_id:发主题帖人id,
+		person_name:发主题帖人名,
+		create_time:发主题帖时间,
+		replyer_count:回复数，
+		view_count:查看数,
+		last_post_id:最后回帖子id,
+		last_post_name :最后回帖 名称,
+		replyer_time:最后回帖时间}
+	]
+
+}
+{
+	"success":false, 
+	"info":"参数错误 or 请求失败！"
+}
+================================================================================
+主题帖保存时进行用户检验 get方式
+
+1接口地址:/dsideal_yy/ypt/bbs/topic/checkUser
+2:前台参数:
+			bbs_id：论坛id 
+			person_id:发帖人id 可通过后台获取(登录人)
+			forum_id
+			identity_id
+			person_name
+			flag
+3:返回值
+    {
+    	"success":true,
+    	"info":成功
+    }
+    {
+		"success":false, 
+		"info":"参数错误 or 不可以发帖."
+	}  
+================================================================================
+主题帖保存 post方式
+
+1接口地址:/dsideal_yy/ypt/bbs/topic/save
+2:前台参数:
+			bbs_id：论坛id 
+			forum_id: 版块id
+			category_id:分类id
+			title :     标题,
+			person_id:发帖人id 可通过后台获取(登录人)
+			b_reply:是否允许回复.
+			b_best:是否精华
+			b_top:是否置顶.
+			content:主题帖内容
+			person_name:发帖人姓名
+3:返回值
+    {
+    	"success":true,
+    	"id":主题帖id,
+    	"info":成功
+    }
+    {
+		"success":false, 
+		"info":"参数错误 or 请求失败！"
+	}   
+
+================================================================================
+查看主题帖 get方式（后台需要修改主题帖表. 修改查看次数，并查询出主题帖信息，回复贴列表.）
+1接口地址:/dsideal_yy/ypt/bbs/topic/view
+2前台参数
+		bbs_id
+		forum_id
+		topic_id ：主题帖id
+		pageNumber : 页码
+		pageSize: 每页显示条数.
+3返回值：
+	{
+		"success":true
+		"forum_name" :版块名称.
+		"title"：主题帖标题
+		"content":主题帖内容
+		"person_id":发帖人id 可通过后台获取(登录人)
+		"person_name":发帖人姓名.
+		"create_time":发帖时间.
+		"b_reply":是否允许回复.(如果为0允许回复，1不允许回复，如果为1不reply_list为空
+		"pageNumber": 1,
+		"totalPage": 总页数,
+		"totalRow":总记录数,
+		"pageSize":每页条数,
+		"view_count":查看次数,
+		"reply_count":回复次数,
+		"reply_list":[
+			{"id":
+			"content":回帖内容,
+			"person_name":回帖人姓名.,
+			"person_id":发帖人id 可通过后台获取(登录人),
+			"floor":楼层,
+			"create_time":回帖时间},
+		]
+	}	
+	
+	{
+		"success":false,
+		"info" :"参数错误 or 请求失败."
+	}	
+
+================================================================================
+回复帖子 post方式（后台需要对主题帖表进行修改 如：最后帖子id，最后回帖人id，最后回帖身份id，最后回帖时间等.）
+1接口地址：/dsideal_yy/ypt/bbs/post/save
+2前台参数:
+		topic_id 主题帖id.
+		title 标题
+		content 回复内容,
+		bbs_id 论坛id.
+		forum_id 版块id.
+		person_id 回复人id.
+		person_name 回复人姓名.
+		identity_id 回复人身份id.
+		parent_id,回复帖子id 回复哪个帖子(不填认为是对主题回复)
+		ancestor_id 祖先帖子id
+3:返回值
+    {
+    	"success":true,
+    	"id":主题帖id,
+    	"pagenum":页码(totalPage值)
+    	"info":成功
+    }
+    {
+		"success":false, 
+		"info":"参数错误 or 请求失败！"
+	}   
+
+================================================================================
+支持/反对
+ 
+ 
+ 

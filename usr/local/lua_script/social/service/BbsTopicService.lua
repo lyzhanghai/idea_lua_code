@@ -377,7 +377,7 @@ function M:getTopicsFromSsdb(bbsid, forumid, categoryid, searchText, filterDate,
         local forum = bbsService:getForumByIdFromSsdb(forumid)
         topic.forum_name = (forum.name == nil and "") or forum.name
         topic.forum_description = (forum.description == nil and "") or forum.description
-        topic.forum_admin_list = cjson.decode(forum.forum_admin_list);
+        topic.forum_admin_list = (forum.forum_admin_list == "" and "") or cjson.decode(forum.forum_admin_list);
     end
     topic.topic_list = {}
     local db = SsdbUtil:getDb();
@@ -461,7 +461,7 @@ function M:setTopByIdToSsDb(topicid, isCancel)
     util:log_r_keys(key, "multi_hget")
     local keys = { "bTop" }
     if isCancel then
-        db:hset(key, "bTop", "0");
+        db:hset(key, "bTop", 0);
     else
         db:hset(key, "bTop", tonumber(os.date("%Y%m%d%H%M%S", os.time())));
     end

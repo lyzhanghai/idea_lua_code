@@ -107,7 +107,7 @@ function M:saveTopicToSsdb(topic)
     local db = SsdbUtil:getDb();
     topic.bDelete = 0;
     local key = "social_bbs_topicid_" .. topic.id
-    log.debug("保存主题帖的 key:"..key)
+    log.debug("保存主题帖的 key:" .. key)
     db:multi_hset(key, topic)
     util:logkeys(key, "multi_hset") --把key记录到日志文件 中.
     local topicids_t, err = db:hget("social_bbs_forum_include_topic", "forum_id_" .. topic.forumId)
@@ -176,10 +176,10 @@ end
 
 --------------------------------------------------------------------------------
 -- 回复时修改主题表数据(ssdb)
--- @param  #string topicid 主题id.
--- @param  #string lastPostId 最后回帖id.
--- @param  #string replyerPersonId 回复人id.
--- @param  #string replyerIdentityId 回复人身份id.
+-- @param #string topicid 主题id.
+-- @param #string lastPostId 最后回帖id.
+-- @param #string replyerPersonId 回复人id.
+-- @param #string replyerIdentityId 回复人身份id.
 function M:updateTopicToDb(topicid, lastPostId, replyerPersonId, replyerIdentityId, replyerPersonName)
     if topicid == nil or string.len(topicid) == 0 then
         error("topicid is null");
@@ -439,9 +439,9 @@ function M:setTopByIdToDb(topicid, isCancel)
     local sql = "";
     local update_ts = TS.getTs()
     if isCancel then
-        sql = "UPDATE T_SOCIAL_BBS_TOPIC SET B_TOP=0,UPDATE_TS="..update_ts.." WHERE ID=" .. topicid
+        sql = "UPDATE T_SOCIAL_BBS_TOPIC SET B_TOP=0,UPDATE_TS=" .. update_ts .. " WHERE ID=" .. topicid
     else
-        sql = "UPDATE T_SOCIAL_BBS_TOPIC SET B_TOP=" .. tonumber(os.date("%Y%m%d%H%M%S", os.time())) .. ",UPDATE_TS="..update_ts.." WHERE ID=" .. topicid
+        sql = "UPDATE T_SOCIAL_BBS_TOPIC SET B_TOP=" .. tonumber(os.date("%Y%m%d%H%M%S", os.time())) .. ",UPDATE_TS=" .. update_ts .. " WHERE ID=" .. topicid
     end
     log.debug("设置该主题帖置顶sql:" .. sql);
     return DBUtil:querySingleSql(sql);
@@ -472,7 +472,7 @@ end
 -- @param #string topicid
 function M:setBestByIdToDb(topicid, val)
     local update_ts = TS.getTs()
-    local sql = "UPDATE T_SOCIAL_BBS_TOPIC SET B_BEST=" .. val .. ",UPDATE_TS="..update_ts.." WHERE ID=" .. topicid
+    local sql = "UPDATE T_SOCIAL_BBS_TOPIC SET B_BEST=" .. val .. ",UPDATE_TS=" .. update_ts .. " WHERE ID=" .. topicid
     log.debug("设置该主题帖置顶sql:" .. sql);
     return DBUtil:querySingleSql(sql);
 end
@@ -498,12 +498,12 @@ function M:deletTopicByIdToDb(topicid)
     if topicid == nil or string.len(topicid) == 0 then
         error("topicid不能为空.")
     end
-    local update_ts =  TS.getTs()
-    local sql = "UPDATE T_SOCIAL_BBS_TOPIC SET B_DELETE=1,UPDATE_TS="..update_ts.." WHERE ID=" .. topicid
+    local update_ts = TS.getTs()
+    local sql = "UPDATE T_SOCIAL_BBS_TOPIC SET B_DELETE=1,UPDATE_TS=" .. update_ts .. " WHERE ID=" .. topicid
     local queryResult = DBUtil:querySingleSql(sql);
     if queryResult then
         log.debug("删除主题帖id:" .. topicid .. "成功.")
-        local sql = "UPDATE T_SOCIAL_BBS_POST SET B_DELETE=1,UPDATE_TS="..update_ts.." WHERE TOPIC_ID=" .. topicid
+        local sql = "UPDATE T_SOCIAL_BBS_POST SET B_DELETE=1,UPDATE_TS=" .. update_ts .. " WHERE TOPIC_ID=" .. topicid
         local result = DBUtil:querySingleSql(sql);
         if result then
             log.debug("删除主题帖id:" .. topicid .. " 下的回复帖成功.")

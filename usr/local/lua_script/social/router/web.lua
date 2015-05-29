@@ -1,6 +1,7 @@
-local util = require("social.common.util")
+--local util = require("social.common.util")
 local cjson = require "cjson"
 local ssdbutil = require("social.common.ssdbutil")
+local redisutil = require("social.common.redisutil")
 local _M = { debug = nil }
 
 local Application = {}
@@ -15,6 +16,7 @@ end
 local function clean()
     --此处用于关闭所有的连接信息。
     ssdbutil:keepalive()
+    redisutil:keepalive()
 end
 
 function Application:run()

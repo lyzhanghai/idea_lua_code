@@ -22,7 +22,7 @@ local function createVideoFolder()
     local identityId = request:getStrParam("identity_id", true, true)
     local folderName = request:getStrParam("folder_name", true, true)
     local isPrivate = request:getStrParam("is_private", true, true)
-    local result = service:createVideoFolder(personId, identityId, folderName, isPrivate)
+    local result = service.createVideoFolder(personId, identityId, folderName, isPrivate)
     local r = { success = true, info = "保存成功." }
     if not result then
         r.success = false
@@ -40,7 +40,7 @@ local function editVideoFolder()
     local folderId = request:getStrParam("folder_id", true, true)
     local folderName = request:getStrParam("folder_name", true, true)
     local isPrivate = request:getStrParam("is_private", false, true)
-    local result = service:editVideoFolder(folderName, isPrivate, folderId)
+    local result = service.editVideoFolder(folderName, isPrivate, folderId)
     local r = { success = true, info = "修改成功." }
     if not result then
         r.success = false
@@ -61,7 +61,7 @@ end
 -- @param #string folder_id：文件夹id
 local function deleteVideoFolder()
     local folderId = request:getStrParam("folder_id", true, true)
-    local result = service:deleteVideoFolder(folderId)
+    local result = service.deleteVideoFolder(folderId)
     local r = { success = true, info = "删除成功." }
     if not result then
         r.success = false
@@ -79,7 +79,7 @@ local function getVideoFolder()
     local personId = request:getStrParam("person_id", true, true)
     local identityId = request:getStrParam("identity_id", true, true)
     local isPrivate = request:getStrParam("is_private", false, true)
-    local result = service:getVideoFolder(personId, identityId, isPrivate)
+    local result = service.getVideoFolder(personId, identityId, isPrivate)
     local r = { success = true, info = "" }
     if not result then
         r.success = false
@@ -102,7 +102,7 @@ end
 -- isPrivate：0公有，1私有
 local function getFolderById()
     local folderId = request:getStrParam("folder_id", true, true)
-    local result = service:getFolderById(folderId);
+    local result = service.getFolderById(folderId);
     local r = { success = true, info = "" }
     if not result then
         r.success = false
@@ -136,7 +136,7 @@ local function createVideo()
     local fileSize = request:getStrParam("file_size", true, true)
     local description = request:getStrParam("description", false, true)
     local resourceId = request:getStrParam("resource_id", true, true)
-    local result = service:createVideo(personId, identityId, folderId, videoName, fileId, fileSize, description, resourceId)
+    local result = service.createVideo(personId, identityId, folderId, videoName, fileId, fileSize, description, resourceId)
     local r = { success = true, info = "创建成功." }
     if not result then
         r.success = false
@@ -154,7 +154,7 @@ local function editVideo()
     local videoId = request:getStrParam("video_id", true, true)
     local videoName = request:getStrParam("video_name", true, true)
     local description = request:getStrParam("description", true, true)
-    local result = service:editVideo(videoId, videoName, description)
+    local result = service.editVideo(videoId, videoName, description)
     local r = { success = true, info = "修改成功." }
     if not result then
         r.success = false
@@ -168,7 +168,7 @@ end
 -- @param #string video_id：照片id
 local function getVideoById()
     local videoId = request:getStrParam("video_id", true, true)
-    local result = service:getVideoById(videoId)
+    local result = service.getVideoById(videoId)
     local r = { success = true, info = "成功." }
     if not result then
         r.success = false
@@ -186,7 +186,7 @@ end
 -- @param #string video_ids：照片id，多个用逗号分隔
 local function deleteVideo()
     local videoIds = request:getStrParam("video_ids", true, true)
-    local result = service:deleteVideo(videoIds)
+    local result = service.deleteVideo(videoIds)
     local r = { success = true, info = "删除成功!" }
     if not result then
         r.success = false
@@ -220,7 +220,7 @@ local function getVideoList()
     local folderId = request:getStrParam("folder_id", true, true)
     local pageNumber = request:getStrParam("pageNumber", true, true)
     local pageSize = request:getStrParam("pageSize", true, true)
-    local result = service:getVideoList(folderId, pageNumber, pageSize)
+    local result = service.getVideoList(folderId, pageNumber, pageSize)
     if result then
         result.success = true;
         cjson.encode_empty_table_as_object(false)
@@ -240,7 +240,7 @@ local function moveVideos()
     local videoIds = request:getStrParam("video_ids", true, true)
     local fromFolderId = request:getStrParam("from_folder_id", true, true)
     local toFolderId = request:getStrParam("to_folder_id", true, true)
-    local result = service:moveVideos(videoIds, fromFolderId, toFolderId)
+    local result = service.moveVideos(videoIds, fromFolderId, toFolderId)
     local r = { success = false, info = "失败." }
     if result then
         r.success = true;

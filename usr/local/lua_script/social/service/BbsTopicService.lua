@@ -548,4 +548,77 @@ function M:deletTopicByIdToSsDb(topicid)
     end
 end
 
+---------------------------------------------------------------------------------------------
+-- 根据用户id 身份id获取用户所发的主题帖信息.
+-- @param #string person_id
+-- @param #string identity_id
+-- @param #string pagenum
+-- @param #string pagesize
+-- @return #table
+function M:getTopicListByUserInfo(personId, identityId, pagenum, pagesize)
+    if personId == nil or string.len(personId) == 0 then
+        error("person_id不能为空.")
+    end
+    if identityId == nil or string.len(identityId) == 0 then
+        error("identity_id不能为空.")
+    end
+    if pagenum == nil or string.len(pagenum) == 0 then
+        error("pagenum  不能为空");
+    end
+    if pagesize == nil or string.len(pagesize) == 0 then
+        error("pagesize  不能为空");
+    end
+    local offset = pagesize * pagenum - pagesize
+    local limit = pagesize
+    local str_maxmatches = "10000"
+    local queryStr = "%s%sfilter=b_delete,0;%smaxmatches=" .. str_maxmatches .. ";offset=" .. offset .. ";limit=" .. limit .. ""
+    local sql = "SELECT SQL_NO_CACHE id FROM T_SOCIAL_BBS_TOPIC_SPHINXSE WHERE query=%s;SHOW ENGINE SPHINX  STATUS;"
+    local sort = "sort=extended:b_top desc,"
+    sort = sort .. "ts desc;"
+    local personIdFilter = "filter=person_id," .. personId .. ";"
+    local identityIdFilter = "filter=identity_id," .. identityId .. ";"
+    queryStr = string.format(queryStr, personIdFilter, identityIdFilter, sort);
+    queryStr = ngx.quote_sql_str(queryStr)
+    log.debug("queryStr :" .. queryStr)
+    sql = string.format(sql, queryStr)
+    log.debug("sql :" .. sql)
+    local db = DBUtil:getDb();
+    local res = db:query(sql)
+    --去第二个结果集中的Status中截取总个数
+    local res1 = db:read_result()
+    local _, s_str = string.find(res1[1]["Status"], "found: ")
+    local e_str = string.find(res1[1]["Status"], ", time:")
+    local totalRow = string.sub(res1[1]["Status"], s_str + 1, e_str - 1)
+    local totalPage = math.floor((totalRow + pagesize - 1) / pagesize)
+    local topic = {}
+    topic.pageNumber = pagenum;
+    topic.totalPage = totalPage;
+    topic.totalRow = totalRow;
+    topic.pageSize = pagesize
+    topic.list = {}
+    local db = SsdbUtil:getDb();
+    if res then
+        for i = 1, #res do
+            local key = "social_bbs_topicid_" .. res[i]["id"]
+            local keys = { "id", "bbsId", "title", "personId", "personName", "createTime", "replyerTime", "replyerPersonName", "forumId" }
+            local _result = db:multi_hget(key, unpack(keys))
+            if _result and #_result > 0 then
+                local _topic = util:multi_hget(_result, keys)
+                local t = {}
+                t.id = _topic.id
+                t.bbs_id = _topic.bbsId
+                t.title = _topic.title;
+                t.person_id = _topic.personId;
+                t.person_name = _topic.personName
+                t.create_time = _topic.createTime
+                t.replyer_time = _topic.replyerTime
+                t.replyer_person_name = _topic.replyerPersonName
+                t.forum_id = _topic.forumId
+                table.insert(topic.list, t)
+            end
+        end
+    end
+    return topic;
+end
+
 return BbsTopicService;

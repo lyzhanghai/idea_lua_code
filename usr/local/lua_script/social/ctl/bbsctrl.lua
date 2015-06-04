@@ -215,9 +215,11 @@ local function postSave()
     post.identityId = identityId
     post.parentId = parentId
     post.ancestorId = ancestorId
+
     local postid = service:getPostPkId();
     post.id = postid
-
+    local count = service:getPostCount(topicId)
+    post.floor = count+1 --此主题帖回复数+1即为楼数.
     local status, err = pcall(function()
         service:savePost(post)
     end)
@@ -228,7 +230,6 @@ local function postSave()
     service:savePostToSsdb(post)
     r.success = true
     r.id = postid
-    local count = service:getPostCount(topicId)
     --------------------------------
     ---- 计算最后一页.
     local _pagesize = tonumber(pageSize)

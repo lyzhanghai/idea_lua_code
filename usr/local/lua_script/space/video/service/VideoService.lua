@@ -12,7 +12,7 @@ local _M = {}
 -- Identity_id：身份id
 -- Folder_name：文件夹名称
 -- Is_private：0公有,1私有
-function _M.createVideoFolder(personId, identityId, folderName, isPrivate)
+function _M.createVideoFolder(personId, identityId, folderName, isPrivate, isDefault)
     if personId == nil or string.len(personId) == 0 then
         error("personId 不能为空.")
     end
@@ -25,8 +25,11 @@ function _M.createVideoFolder(personId, identityId, folderName, isPrivate)
     if isPrivate == nil or string.len(isPrivate) == 0 then
         error("isPrivate 不能为空.")
     end
+    if isDefault == nil or string.len(isDefault) == 0 then
+        isDefault = 0
+    end
     local sql = "INSERT INTO T_SOCIAL_VIDEO_FOLDER(PERSON_ID, IDENTITY_ID, FOLDER_NAME, CREATE_TIME,  IS_PRIVATE, IS_DEFAULT,VIDEO_NUM) VALUES (" ..
-            personId .. "," .. identityId .. "," .. quote(folderName) .. ",now()," .. isPrivate .. ",0,0)"
+            personId .. "," .. identityId .. "," .. quote(folderName) .. ",now()," .. isPrivate .. "," .. isDefault .. "," .. "0)"
     local result = DBUtil:querySingleSql(sql);
     return result
 end
@@ -95,15 +98,15 @@ function _M.getVideoFolder(personId, identityId, isPrivate)
     if identityId == nil or string.len(identityId) == 0 then
         error("identityId 不能为空.")
     end
---    if isPrivate == nil or string.len(isPrivate) == 0 then
---        error("isPrivate 不能为空.")
---    end
+    --    if isPrivate == nil or string.len(isPrivate) == 0 then
+    --        error("isPrivate 不能为空.")
+    --    end
     local sql = "SELECT * FROM T_SOCIAL_VIDEO_FOLDER t WHERE PERSON_ID = " .. quote(personId) .. " AND IDENTITY_ID = " .. quote(identityId) .. " AND IS_DELETE=0"
     if isPrivate and string.len(isPrivate) > 0 then
         sql = sql .. " AND IS_PRIVATE = " .. tonumber(isPrivate)
     end
     sql = sql .. " ORDER BY CREATE_TIME ASC"
-    log.debug("获取视频文件列表.sql:"..sql)
+    log.debug("获取视频文件列表.sql:" .. sql)
     local result = DBUtil:querySingleSql(sql);
 
     log.debug(result);
@@ -140,7 +143,7 @@ end
 -- @param #string file_id：file_id加扩展名
 -- @param #string file_size：视频大小
 -- @param #string description：视频说明描述
-function _M.createVideo(personId, identityId, folderId, videoName, fileId, fileSize, description,resourceId)
+function _M.createVideo(personId, identityId, folderId, videoName, fileId, fileSize, description, resourceId)
     if personId == nil or string.len(personId) == 0 then
         error("personId 不能为空.")
     end
@@ -161,12 +164,12 @@ function _M.createVideo(personId, identityId, folderId, videoName, fileId, fileS
     end
     if description == nil or string.len(description) == 0 then
         --error("description 不能为空.")
-        description=""
+        description = ""
     end
     if resourceId == nil or string.len(resourceId) == 0 then
         error("resourceId 不能为空.")
     end
-   -- local resourceId = "" --调用平台接口，保存资源信息，然后返回 resourceid.
+    -- local resourceId = "" --调用平台接口，保存资源信息，然后返回 resourceid.
     local sql = "INSERT INTO  t_social_video (person_id,identity_id,folder_id,video_name,file_id,file_size,description,resource_id)"
     local value = " values(" .. personId .. "," .. identityId .. "," .. folderId .. "," .. quote(videoName) .. "," .. quote(fileId) .. "," .. fileSize .. "," .. quote(description) .. "," .. resourceId .. ")"
     sql = sql .. value;
@@ -176,7 +179,7 @@ function _M.createVideo(personId, identityId, folderId, videoName, fileId, fileS
     --照片数加1
     local usql = "UPDATE T_SOCIAL_VIDEO_FOLDER SET VIDEO_NUM = VIDEO_NUM + 1 WHERE ID = " .. quote(folderId)
     local rows = db:query(usql).affected_rows
-    if result and rows>0 then
+    if result and rows > 0 then
         return true
     else
         return false;
@@ -197,7 +200,7 @@ function _M.editVideo(videoId, videoName, description)
     end
     if description == nil or string.len(description) == 0 then
         --error("description 不能为空.")
-        description=""
+        description = "DESCRIPTION"
     end
     local sql = "UPDATE T_SOCIAL_VIDEO SET VIDEO_NAME=%s,DESCRIPTION=%s WHERE ID=%d"
     sql = string.format(sql, quote(videoName), quote(description), videoId)
@@ -212,23 +215,31 @@ local function reloadResourceM3U8Info(result)
         if TableUtil:length(result) > 0 then
             local db = RedisUtil:getDb()
             for i = 1, #result do
-                local resourceId =  result[i]['resource_id'];
-                log.debug("在redis中获取 资源信息.key: resource_"..resourceId)
-                local resRecord = db:hmget("resource_"..resourceId,"m3u8_status","m3u8_url","thumb_id")
+                local resourceId = result[i]['resource_id'];
+                log.debug("在redis中获取 资源信息.key: resource_" .. resourceId)
+                local resRecord = db:hmget("resource_" .. resourceId, "m3u8_status", "m3u8_url", "thumb_id", "width", "height", "resource_format", "file_id")
                 log.debug(resRecord)
-                if resRecord~=ngx.null then
+                if resRecord ~= ngx.null then
                     local m3u8_status = tostring(resRecord[1])
                     local m3u8_url = tostring(resRecord[2])
                     local thumb_id = tostring(resRecord[3])
+                    local width = tostring(resRecord[4])
+                    local height = tostring(resRecord[5])
+                    local resource_format = tostring(resRecord[6])
+                    local file_id = tostring(resRecord[7])
                     result[i].m3u8_status = m3u8_status
                     result[i].m3u8_url = m3u8_url
                     result[i].thumb_id = thumb_id
+                    result[i].width = width
+                    result[i].height = height
+                    result[i].resource_format = resource_format
+                    result[i].file_id = file_id
                 end
             end
         end
     end
-
 end
+
 -----------------------------------------------------------------
 -- 通过video_id获取视频.
 -- @param #string video_id：照片id
@@ -255,7 +266,7 @@ function _M.deleteVideo(ids)
         error("id 不能为空.")
     end
     local sql = "UPDATE T_SOCIAL_VIDEO SET IS_DELETE=1 WHERE ID IN(" .. ids .. ")"
-    log.debug("删除视频sql:"..sql)
+    log.debug("删除视频sql:" .. sql)
     local result = DBUtil:querySingleSql(sql)
 
     return result;
@@ -296,7 +307,7 @@ function _M.getVideoList(folderId, pageNumber, pageSize)
     if list then
         log.debug("获取视频列表.list :");
         log.debug(list)
-        reloadResourceM3U8Info(list)--加载m3u8信息.
+        reloadResourceM3U8Info(list) --加载m3u8信息.
         local result = { video_list = list, totalRow = totalRow, totalPage = totalPage, pageNumber = pageNumber, pageSize = pageSize }
         return result;
     else
@@ -347,6 +358,29 @@ function _M.moveVideos(videoIds, fromFolderId, toFolderId)
         end
     end
     return true;
+end
+
+----------------------------------------------------------------------
+-- 验证file_id是否存在.
+-- @param #string file_ids 视频文件 id集合 以,分格.
+-- @result #table
+function _M.checkVideosByFileIds(file_ids)
+    if not file_ids or string.len(file_ids) == 0 then
+        error("参数file_ids不能为空.")
+    end
+    local t_ids = Split(file_ids, ",")
+    local t_sqls = {}
+    for i = 1, #t_ids do
+        local fid = quote(t_ids[i])
+        table.insert(t_sqls, fid)
+    end
+    local str = table.concat(t_sqls, ",")
+    local sql = "SELECT FILE_ID,resource_id FROM T_SOCIAL_VIDEO WHERE file_id IN(" .. str .. ") AND IS_DELETE=0"
+    log.debug("查询file_id sql:" .. sql)
+    local id_list = DBUtil:querySingleSql(sql);
+    reloadResourceM3U8Info(id_list);
+    log.debug(id_list)
+    return id_list;
 end
 
 return _M;

@@ -7,7 +7,8 @@ local web = require("social.router.web")
 local TableUtil = require("social.common.table")
 local cjson = require "cjson"
 local request = require("social.common.request")
-local context = ngx.var.path_uri
+local context = ngx.var.path_uri --有权限的context.
+local no_permission_context = ngx.var.path_uri_no_permission --没有权限的context.
 local log = require("social.common.log")
 local service = require("space.video.service.VideoService")
 
@@ -22,7 +23,8 @@ local function createVideoFolder()
     local identityId = request:getStrParam("identity_id", true, true)
     local folderName = request:getStrParam("folder_name", true, true)
     local isPrivate = request:getStrParam("is_private", true, true)
-    local result = service.createVideoFolder(personId, identityId, folderName, isPrivate)
+    local isDefault = request:getStrParam("is_default", false, true)
+    local result = service.createVideoFolder(personId, identityId, folderName, isPrivate, isDefault)
     local r = { success = true, info = "保存成功." }
     if not result then
         r.success = false
@@ -153,7 +155,7 @@ end
 local function editVideo()
     local videoId = request:getStrParam("video_id", true, true)
     local videoName = request:getStrParam("video_name", true, true)
-    local description = request:getStrParam("description", true, true)
+    local description = request:getStrParam("description", false, true)
     local result = service.editVideo(videoId, videoName, description)
     local r = { success = true, info = "修改成功." }
     if not result then
@@ -249,6 +251,21 @@ local function moveVideos()
     ngx.print(cjson.encode(r))
 end
 
+-----------------------------------------------------------------
+-- 视频移动，可以批量移动.1
+-- @param #string file_ids 视频文件 id集合 以,分格.
+local function checkVideos()
+    local fileIds = request:getStrParam("file_ids", true, true)
+    local result = service.checkVideosByFileIds(fileIds)
+    local r = {success = false }
+    if result then
+        r.list = result
+        r.success = true;
+    end
+    cjson.encode_empty_table_as_object(false)
+    ngx.print(cjson.encode(r))
+end
+
 -- 配置url.
 -- 按功能分
 local urls = {
@@ -263,6 +280,7 @@ local urls = {
     context .. '/deleteVideo', deleteVideo,
     context .. '/getVideo', getVideoList,
     context .. '/moveVideos', moveVideos,
+    no_permission_context .. '/checkVideos', checkVideos,
 }
 local app = web.application(urls, nil)
 app:start()

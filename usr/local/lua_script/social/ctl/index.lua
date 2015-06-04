@@ -239,6 +239,56 @@ local function getBbsList()
     return
 end
 
+
+----------------------------------------------------------------------
+-- 通过用户信息获取主题帖信息.
+-- @param #string person_id
+-- @param #string identity_id
+-- @param #string pageNumber
+-- @param #string pageSize
+local function getTopicByUserInfo()
+    local personId = request:getStrParam("person_id", true, true)
+    local identityId = request:getStrParam("identity_id", true, true)
+    local pageNumber = request:getStrParam("pageNumber", true, true)
+    local pageSize = request:getStrParam("pageSize", true, true)
+    local topicService = getService("BbsTopicService")
+    local result = topicService:getTopicListByUserInfo(personId, identityId, pageNumber, pageSize)
+    cjson.encode_empty_table_as_object(false)
+    if result then
+        result.success = true
+        ngx.say(cjson.encode(result))
+    else
+        result.success = false;
+        result.info = { name = "", data = "没有数据" }
+        ngx.say(cjson.encode(result))
+    end
+end
+
+----------------------------------------------------------------------
+-- 通过用户信息获取回复帖信息.
+-- @param #string person_id
+-- @param #string identity_id
+-- @param #string pageNumber
+-- @param #string pageSize
+local function getPostByUserInfo()
+    local personId = request:getStrParam("person_id", true, true)
+    local identityId = request:getStrParam("identity_id", true, true)
+    local pageNumber = request:getStrParam("pageNumber", true, true)
+    local pageSize = request:getStrParam("pageSize", true, true)
+    local postService = getService("BbsPostService")
+    log.debug("personId :"..personId);
+    local result = postService:getPostListByUserInfo(personId, identityId, pageNumber, pageSize)
+    cjson.encode_empty_table_as_object(false)
+    if result then
+        result.success = true
+        ngx.say(cjson.encode(result))
+    else
+        result.success = false;
+        result.info = { name = "", data = "没有数据" }
+        ngx.say(cjson.encode(result))
+    end
+end
+
 -------------------------------------------------------------------------------------
 -- 配置url.
 -- 按功能分
@@ -251,6 +301,8 @@ local urls = {
     context .. '/topic/search', topicSearchList,
     context .. '/topic/view', topicView,
     context .. '/bbsList$', getBbsList,
+    context .. '/getTopicByUserInfo', getTopicByUserInfo,
+    context .. '/getPostByUserInfo', getPostByUserInfo,
 }
 local app = web.application(urls, nil)
 app:start()

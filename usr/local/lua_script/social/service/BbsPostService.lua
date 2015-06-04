@@ -145,9 +145,10 @@ function BbsPostService:savePostToSsdb(post)
         error("topic id is null");
     end
     post.createTime = date(os.date("%Y%m%d%H%M%S")):fmt("%Y-%m-%d %H:%M:%S")
-    local key = "social_bbs_topicid_" .. post.topicId .. "_postid_" .. post.id
+    --local key = "social_bbs_topicid_" .. post.topicId .. "_postid_" .. post.id
+    local key = "social_bbs_postid_" .. post.id
     post.bDelete = 0;
-    db = SsdbUtil:getDb();
+    local db = SsdbUtil:getDb();
     db:multi_hset(key, post)
     util:logkeys(key, "multi_hset")
     local postids_t, err = db:hget("social_bbs_forum_topic_include_post", "topic_id_" .. post.topicId)
@@ -175,16 +176,13 @@ function BbsPostService:savePostToSsdb(post)
 end
 
 --------------------------------------------------------------------------------
-local function getPostSphinxData(bbsid, forumid, topicid, pagenum, pagesize)
+local function getPostSphinxData(filter, pagenum, pagesize)
     local offset = pagesize * pagenum - pagesize
     local limit = pagesize
     local str_maxmatches = "10000"
     local db = DBUtil:getDb();
-    local sql = "SELECT SQL_NO_CACHE id FROM T_SOCIAL_BBS_POST_SPHINXSE WHERE query='%s;%s;%s;sort=attr_asc:ts;maxmatches=" .. str_maxmatches .. ";offset=" .. offset .. ";limit=" .. limit .. "';SHOW ENGINE SPHINX  STATUS;"
-    local bbsidFilter = "filter=bbs_id," .. bbsid
-    local forumidFilter = "filter=forum_id," .. forumid
-    local topicidFilter = "filter=topic_id," .. topicid
-    sql = string.format(sql, bbsidFilter, forumidFilter, topicidFilter);
+    local sql = "SELECT SQL_NO_CACHE id FROM T_SOCIAL_BBS_POST_SPHINXSE WHERE query='%ssort=attr_asc:ts;maxmatches=" .. str_maxmatches .. ";offset=" .. offset .. ";limit=" .. limit .. "';SHOW ENGINE SPHINX  STATUS;"
+    sql = string.format(sql, filter);
     log.debug("sql :" .. sql)
     local res = db:query(sql)
     --去第二个结果集中的Status中截取总个数
@@ -241,7 +239,7 @@ function BbsPostService:getPostsFromDb(bbsid, forumid, topicid, pagenum, pagesiz
         error("pagesize  不能为空");
     end
     local db = SsdbUtil:getDb()
-    local topic_keys = { "forumName", "title", "content", "personId", "personName", "createTime", "bReply", "viewCount", "replyCount", "identityId","bBest","bTop" }
+    local topic_keys = { "forumName", "title", "content", "personId", "personName", "createTime", "bReply", "viewCount", "replyCount", "identityId", "bBest", "bTop" }
     local topic_key = "social_bbs_topicid_" .. topicid
     local topicResult = db:multi_hget(topic_key, unpack(topic_keys))
     util:log_r_keys(topic_key, "multi_hget")
@@ -266,14 +264,19 @@ function BbsPostService:getPostsFromDb(bbsid, forumid, topicid, pagenum, pagesiz
             topic.forum_name = forumResult[2]
         end
         topic.reply_list = {}
-        local res, totalRow, totalPage = getPostSphinxData(bbsid, forumid, topicid, pagenum, pagesize);
+        local bbsidFilter = "filter=bbs_id," .. bbsid .. ";"
+        local forumidFilter = "filter=forum_id," .. forumid .. ";"
+        local topicidFilter = "filter=topic_id," .. topicid .. ";"
+        local filter = bbsidFilter .. forumidFilter .. topicidFilter
+        local res, totalRow, totalPage = getPostSphinxData(filter, pagenum, pagesize);
         topic.totalRow = totalRow;
         topic.totalPage = totalPage;
         topic.pageNumber = pagenum;
         topic.pageSize = pagesize;
         if res then
             for i = 1, #res do
-                local key = "social_bbs_topicid_" .. topicid .. "_postid_" .. res[i]["id"]
+                local key = "social_bbs_postid_" .. res[i]["id"]
+                --local key = "social_bbs_topicid_" .. topicid .. "_postid_" .. res[i]["id"]
                 local keys = { "id", "content", "personId", "personName", "createTime", "floor", "identityId", "bDelete" }
                 local _result = db:multi_hget(key, unpack(keys))
                 util:log_r_keys(key, "multi_hget")
@@ -308,7 +311,7 @@ function BbsPostService:deletPostByIdToDb(postid)
         error("postid不能为空.")
     end
     local update_ts = TS.getTs()
-    local sql = "UPDATE T_SOCIAL_BBS_POST SET B_DELETE=1,UPDATE_TS="..update_ts.." WHERE ID=" .. postid
+    local sql = "UPDATE T_SOCIAL_BBS_POST SET B_DELETE=1,UPDATE_TS=" .. update_ts .. " WHERE ID=" .. postid
     local queryResult = DBUtil:querySingleSql(sql);
     return queryResult;
 end
@@ -324,12 +327,68 @@ function BbsPostService:deletPostByIdToSsDb(topicid, postid)
         error("topicid不能为空.")
     end
     local db = SsdbUtil:getDb()
-    local key = "social_bbs_topicid_" .. topicid .. "_postid_" .. postid
+    local key = "social_bbs_postid_" .. postid
+    -- local key = "social_bbs_topicid_" .. topicid .. "_postid_" .. postid
     local status, err = db:multi_hset(key, "bDelete", 1)
     if status then
         return true;
     end
     return false;
+end
+
+--------------------------------------------------------------------------------------------
+-- 通过用户信息查询回复帖信息.
+-- @param #string personId.
+-- @param #string identityId.
+-- @param #string pagenum.
+-- @param #string pagesize.
+function BbsPostService:getPostListByUserInfo(personId, identityId, pagenum, pagesize)
+    log.debug("personId:" .. personId)
+    if personId == nil or string.len(personId) == 0 then
+        error("person_id 不能为空.")
+    end
+    if identityId == nil or string.len(identityId) == 0 then
+        error("identity_id 不能为空.")
+    end
+    if pagenum == nil or string.len(pagenum) == 0 then
+        error("pagenum  不能为空");
+    end
+    if pagesize == nil or string.len(pagesize) == 0 then
+        error("pagesize  不能为空");
+    end
+    local personIdFilter = "filter=person_id," .. personId .. ";"
+    local identityIdFilter = "filter=identity_id," .. identityId .. ";"
+    local filter = personIdFilter .. identityIdFilter
+    local res, totalRow, totalPage = getPostSphinxData(filter, pagenum, pagesize);
+    local post = {}
+    post.totalRow = totalRow;
+    post.totalPage = totalPage;
+    post.pageNumber = pagenum;
+    post.pageSize = pagesize;
+    post.list = {}
+    local db = SsdbUtil:getDb()
+    if res then
+        for i = 1, #res do
+            -- local key = "social_bbs_topicid_" .. topicid .. "_postid_" .. res[i]["id"]
+            local key = "social_bbs_postid_" .. res[i]["id"]
+            local keys = { "id", "content", "personId", "personName", "createTime", "floor", "identityId", "bDelete" }
+            local _result = db:multi_hget(key, unpack(keys))
+            if _result and #_result > 0 then
+                local _post = util:multi_hget(_result, keys)
+                local t = {}
+                t.id = _post.id
+                t.person_id = _post.personId;
+                t.person_name = _post.personName
+                t.create_time = _post.createTime;
+                t.icon_url = getIcon(_post.personId, _post.identityId)
+                t.floor = _post.floor;
+                t.content = _post.content
+                t.b_delete = _post.bDelete;
+                table.insert(post.list, t)
+            end
+        end
+    end
+    return post
 end
 
 return BbsPostService;

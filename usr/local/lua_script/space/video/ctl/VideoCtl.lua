@@ -188,7 +188,8 @@ end
 -- @param #string video_ids：照片id，多个用逗号分隔
 local function deleteVideo()
     local videoIds = request:getStrParam("video_ids", true, true)
-    local result = service.deleteVideo(videoIds)
+    local folderId = request:getStrParam("folder_id", true, true)
+    local result = service.deleteVideo(videoIds,folderId)
     local r = { success = true, info = "删除成功!" }
     if not result then
         r.success = false
@@ -255,8 +256,8 @@ end
 -- 视频移动，可以批量移动.1
 -- @param #string file_ids 视频文件 id集合 以,分格.
 local function checkVideos()
-    local fileIds = request:getStrParam("file_ids", true, true)
-    local result = service.checkVideosByFileIds(fileIds)
+    local ids = request:getStrParam("ids", true, true)
+    local result = service.checkVideosByIds(ids)
     local r = {success = false }
     if result then
         r.list = result

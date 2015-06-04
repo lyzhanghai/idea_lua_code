@@ -5,6 +5,14 @@ local RedisUtil = require("social.common.redisutil")
 local quote = ngx.quote_sql_str
 local _M = {}
 
+--------------------------------------------------------------------
+local function checkParamIsNull(t)
+    for key, var in pairs(t) do
+        if var == nil or string.len(var) == 0 then
+            error(key .. " 不能为空.")
+        end
+    end
+end
 
 ---------------------------------------------------------------
 -- 创建视频文件夹
@@ -13,18 +21,13 @@ local _M = {}
 -- Folder_name：文件夹名称
 -- Is_private：0公有,1私有
 function _M.createVideoFolder(personId, identityId, folderName, isPrivate, isDefault)
-    if personId == nil or string.len(personId) == 0 then
-        error("personId 不能为空.")
-    end
-    if identityId == nil or string.len(identityId) == 0 then
-        error("identityId 不能为空.")
-    end
-    if folderName == nil or string.len(folderName) == 0 then
-        error("folderName 不能为空.")
-    end
-    if isPrivate == nil or string.len(isPrivate) == 0 then
-        error("isPrivate 不能为空.")
-    end
+
+    checkParamIsNull({
+        personId = personId,
+        identityId = identityId,
+        folderName = folderName,
+        isPrivate = isPrivate
+    })
     if isDefault == nil or string.len(isDefault) == 0 then
         isDefault = 0
     end
@@ -40,15 +43,12 @@ end
 -- @param #string Folder_name：文件夹名称
 -- @param #string Is_private：0公有,1私有
 function _M.editVideoFolder(folderName, isPrivate, folderId)
-    if folderId == nil or string.len(folderId) == 0 then
-        error("folderId 不能为空.")
-    end
-    if isPrivate == nil or string.len(isPrivate) == 0 then
-        error("isPrivate 不能为空.")
-    end
-    if folderName == nil or string.len(folderName) == 0 then
-        error("folderName 不能为空.")
-    end
+
+    checkParamIsNull({
+        folderId = folderId,
+        folderName = folderName,
+        isPrivate = isPrivate
+    })
     local sql = "UPDATE T_SOCIAL_VIDEO_FOLDER SET FOLDER_NAME = " .. quote(folderName) .. ",IS_PRIVATE = " .. quote(isPrivate) ..
             " WHERE ID = " .. folderId
     local result = DBUtil:querySingleSql(sql);
@@ -58,9 +58,9 @@ end
 ----------------------------------------------------------------
 -- 通过id获取文件夹信息.
 function _M.getVideoFolderById(folderId)
-    if folderId == nil or string.len(folderId) == 0 then
-        error("folderId 不能为空.")
-    end
+    checkParamIsNull({
+        folderId = folderId
+    })
     local sql = "SELECT * FROM T_SOCIAL_VIDEO_FOLDER T WHERE ID = " .. quote(folderId)
     local result = DBUtil:querySingleSql(sql);
     return result
@@ -70,9 +70,9 @@ end
 -- 删除视频文件夹 1
 -- Folder_id：文件夹id
 function _M.deleteVideoFolder(folderId)
-    if folderId == nil or string.len(folderId) == 0 then
-        error("folderId 不能为空.")
-    end
+    checkParamIsNull({
+        folderId = folderId
+    })
     local db = DBUtil:getDb();
     local dsql = "UPDATE T_SOCIAL_VIDEO SET IS_DELETE=1 WHERE FOLDER_ID = " .. quote(folderId)
     local dresutl, err = db:query(dsql)
@@ -92,12 +92,10 @@ end
 -- @param #string Identity_id：身份id
 -- @param #string Is_private：0公有,1私有,不传查所有
 function _M.getVideoFolder(personId, identityId, isPrivate)
-    if personId == nil or string.len(personId) == 0 then
-        error("personId 不能为空.")
-    end
-    if identityId == nil or string.len(identityId) == 0 then
-        error("identityId 不能为空.")
-    end
+    checkParamIsNull({
+        personId = personId,
+        identityId = identityId
+    })
     --    if isPrivate == nil or string.len(isPrivate) == 0 then
     --        error("isPrivate 不能为空.")
     --    end
@@ -108,17 +106,7 @@ function _M.getVideoFolder(personId, identityId, isPrivate)
     sql = sql .. " ORDER BY CREATE_TIME ASC"
     log.debug("获取视频文件列表.sql:" .. sql)
     local result = DBUtil:querySingleSql(sql);
-
     log.debug(result);
-    --    log.debug(result)
-    --    local list = {}
-    --    if result then
-    --        for i = 1, #result do
-    --            local t = {}
-    --            local _result = result[i];
-    --            t.id = _result["id"]
-    --        end
-    --    end
     return result;
 end
 
@@ -126,9 +114,10 @@ end
 -- 通过id获取文件夹信息.
 -- @param #string folder_id：文件夹id
 function _M.getFolderById(id)
-    if id == nil or string.len(id) == 0 then
-        error("id 不能为空.")
-    end
+
+    checkParamIsNull({
+        id = id
+    })
     local sql = "SELECT * FROM T_SOCIAL_VIDEO_FOLDER t WHERE id = " .. quote(id)
     local result = DBUtil:querySingleSql(sql);
     return result;
@@ -144,31 +133,20 @@ end
 -- @param #string file_size：视频大小
 -- @param #string description：视频说明描述
 function _M.createVideo(personId, identityId, folderId, videoName, fileId, fileSize, description, resourceId)
-    if personId == nil or string.len(personId) == 0 then
-        error("personId 不能为空.")
-    end
-    if identityId == nil or string.len(identityId) == 0 then
-        error("identityId 不能为空.")
-    end
-    if folderId == nil or string.len(folderId) == 0 then
-        error("folderId 不能为空.")
-    end
-    if videoName == nil or string.len(videoName) == 0 then
-        error("videoName 不能为空.")
-    end
-    if fileId == nil or string.len(fileId) == 0 then
-        error("fileId 不能为空.")
-    end
-    if fileSize == nil or string.len(fileSize) == 0 then
-        error("fileSize 不能为空.")
-    end
+    checkParamIsNull({
+        personId = personId,
+        identityId = identityId,
+        folderId = folderId,
+        videoName = videoName,
+        fileId = fileId,
+        fileSize = fileSize,
+        resourceId = resourceId
+    })
     if description == nil or string.len(description) == 0 then
         --error("description 不能为空.")
         description = ""
     end
-    if resourceId == nil or string.len(resourceId) == 0 then
-        error("resourceId 不能为空.")
-    end
+
     -- local resourceId = "" --调用平台接口，保存资源信息，然后返回 resourceid.
     local sql = "INSERT INTO  t_social_video (person_id,identity_id,folder_id,video_name,file_id,file_size,description,resource_id)"
     local value = " values(" .. personId .. "," .. identityId .. "," .. folderId .. "," .. quote(videoName) .. "," .. quote(fileId) .. "," .. fileSize .. "," .. quote(description) .. "," .. resourceId .. ")"
@@ -192,14 +170,11 @@ end
 -- @param #string video_name：文件夹名称
 -- @param #string description：视频描述、说明
 function _M.editVideo(videoId, videoName, description)
-    if videoId == nil or string.len(videoId) == 0 then
-        error("videoId 不能为空.")
-    end
-    if videoName == nil or string.len(videoName) == 0 then
-        error("videoName 不能为空.")
-    end
+    checkParamIsNull({
+        videoId = videoId,
+        videoName = videoName
+    })
     if description == nil or string.len(description) == 0 then
-        --error("description 不能为空.")
         description = "DESCRIPTION"
     end
     local sql = "UPDATE T_SOCIAL_VIDEO SET VIDEO_NAME=%s,DESCRIPTION=%s WHERE ID=%d"
@@ -244,9 +219,9 @@ end
 -- 通过video_id获取视频.
 -- @param #string video_id：照片id
 function _M.getVideoById(id)
-    if id == nil or string.len(id) == 0 then
-        error("id 不能为空.")
-    end
+    checkParamIsNull({
+        id = id
+    })
     local sql = "SELECT *  FROM T_SOCIAL_VIDEO WHERE ID=%d";
     sql = string.format(sql, id);
     local result = DBUtil:querySingleSql(sql);
@@ -257,19 +232,25 @@ end
 -----------------------------------------------------------------
 -- 删除视频，可以批量删除 1
 -- @param #string video_ids：照片id，多个用逗号分隔
-function _M.deleteVideo(ids)
-    --    local idas = Split(ids, ",")
-    --    for i = 1,#idas  do
-    --        idas[i]
-    --    end
-    if ids == nil or string.len(ids) == 0 then
-        error("id 不能为空.")
-    end
+-- @param #string folder_id：照片文件夹id
+function _M.deleteVideo(ids, folder_id)
+    checkParamIsNull({
+        ids = ids,
+        folder_id = folder_id
+    })
+    local idas = Split(ids, ",")
+    local count = #idas;
     local sql = "UPDATE T_SOCIAL_VIDEO SET IS_DELETE=1 WHERE ID IN(" .. ids .. ")"
     log.debug("删除视频sql:" .. sql)
     local result = DBUtil:querySingleSql(sql)
-
-    return result;
+    if result.affected_rows > 0 then
+        local folder_sql = "UPDATE T_SOCIAL_VIDEO_FOLDER SET VIDEO_NUM=VIDEO_NUM-" .. count .. " WHERE ID=" .. folder_id
+        local delete_r = DBUtil:querySingleSql(folder_sql)
+        if delete_r.affected_rows > 0 then
+            return true;
+        end
+    end
+    return false;
 end
 
 -----------------------------------------------------------------
@@ -278,16 +259,11 @@ end
 -- @param #string pageNumber：第几页
 -- @param #string pageSize：每页条数
 function _M.getVideoList(folderId, pageNumber, pageSize)
-    if folderId == nil or string.len(folderId) == 0 then
-        error("folderId 不能为空");
-    end
-    if pageNumber == nil or string.len(pageNumber) == 0 then
-        error("pageNumber 不能为空");
-    end
-
-    if pageSize == nil or string.len(pageSize) == 0 then
-        error("pageSize 不能为空");
-    end
+    checkParamIsNull({
+        folderId = folderId,
+        pageNumber = pageNumber,
+        pageSize = pageSize
+    })
     local count_sql = "SELECT COUNT(*) as totalRow FROM T_SOCIAL_VIDEO T WHERE T.FOLDER_ID=" .. folderId .. " AND IS_DELETE=0"
     local list_sql = "SELECT *  FROM T_SOCIAL_VIDEO T WHERE T.FOLDER_ID=" .. folderId .. " AND IS_DELETE=0"
     log.debug("获取主题帖列表.count_sql:" .. count_sql);
@@ -321,15 +297,11 @@ end
 -- @param #string from_folder_id：从文件夹id
 -- @param #string to_folder_id：移动到文件夹id
 function _M.moveVideos(videoIds, fromFolderId, toFolderId)
-    if videoIds == nil or string.len(videoIds) == 0 then
-        error("videoIds 不能为空")
-    end
-    if fromFolderId == nil or string.len(fromFolderId) == 0 then
-        error("fromFolderId 不能为空")
-    end
-    if toFolderId == nil or string.len(toFolderId) == 0 then
-        error("toFolderId 不能为空")
-    end
+    checkParamIsNull({
+        videoIds = videoIds,
+        fromFolderId = fromFolderId,
+        toFolderId = toFolderId
+    })
     local t_ids = Split(videoIds, ",")
     local t_sqls = {}
     for i = 1, #t_ids do
@@ -362,20 +334,20 @@ end
 
 ----------------------------------------------------------------------
 -- 验证file_id是否存在.
--- @param #string file_ids 视频文件 id集合 以,分格.
+-- @param #string ids  id集合 以,分格.
 -- @result #table
-function _M.checkVideosByFileIds(file_ids)
-    if not file_ids or string.len(file_ids) == 0 then
-        error("参数file_ids不能为空.")
-    end
-    local t_ids = Split(file_ids, ",")
+function _M.checkVideosByIds(ids)
+    checkParamIsNull({
+        ids = ids
+    })
+    local t_ids = Split(ids, ",")
     local t_sqls = {}
     for i = 1, #t_ids do
         local fid = quote(t_ids[i])
         table.insert(t_sqls, fid)
     end
     local str = table.concat(t_sqls, ",")
-    local sql = "SELECT FILE_ID,resource_id FROM T_SOCIAL_VIDEO WHERE file_id IN(" .. str .. ") AND IS_DELETE=0"
+    local sql = "SELECT FILE_ID,resource_id,video_name FROM T_SOCIAL_VIDEO WHERE ID IN(" .. str .. ") AND IS_DELETE=0"
     log.debug("查询file_id sql:" .. sql)
     local id_list = DBUtil:querySingleSql(sql);
     reloadResourceM3U8Info(id_list);

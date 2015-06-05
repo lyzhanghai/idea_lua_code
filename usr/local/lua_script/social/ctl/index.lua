@@ -186,26 +186,25 @@ end
 -- @param #string pageSize.
 --
 local function topicView()
-    local service = getService("BbsPostService")
+    local postService = getService("BbsPostService")
     local topicService = getService("BbsTopicService")
     local topicid = request:getStrParam("topic_id", true, true)
-    local bbsid = request:getStrParam("bbs_id", true, true)
-    local forumid = request:getStrParam("forum_id", true, true)
+    local bbsid = request:getStrParam("bbs_id", false, true)
+    local forumid = request:getStrParam("forum_id", false, true)
     local pageNumber = request:getStrParam("pageNumber", true, true)
     local pageSize = request:getStrParam("pageSize", true, true)
-    local r = service:getPostsFromDb(bbsid, forumid, topicid, pageNumber, pageSize)
+    local r = postService:getPostsFromDb(bbsid, forumid, topicid, pageNumber, pageSize)
     log.debug(r);
     topicService:updateTopicViewCountToDb(topicid)
     topicService:updateTopicViewCountToSsdb(topicid)
     cjson.encode_empty_table_as_object(false)
     if r then
         r.success = true
-        ngx.say(cjson.encode(r))
     else
         r.success = false;
         r.info = { name = "", data = "没有数据" }
-        ngx.say(cjson.encode(r))
     end
+    ngx.say(cjson.encode(r))
 end
 
 local function getBbsList()
@@ -256,12 +255,11 @@ local function getTopicByUserInfo()
     cjson.encode_empty_table_as_object(false)
     if result then
         result.success = true
-        ngx.say(cjson.encode(result))
     else
         result.success = false;
         result.info = { name = "", data = "没有数据" }
-        ngx.say(cjson.encode(result))
     end
+    ngx.say(cjson.encode(result))
 end
 
 ----------------------------------------------------------------------
@@ -281,12 +279,11 @@ local function getPostByUserInfo()
     cjson.encode_empty_table_as_object(false)
     if result then
         result.success = true
-        ngx.say(cjson.encode(result))
     else
         result.success = false;
         result.info = { name = "", data = "没有数据" }
-        ngx.say(cjson.encode(result))
     end
+    ngx.say(cjson.encode(result))
 end
 
 -------------------------------------------------------------------------------------

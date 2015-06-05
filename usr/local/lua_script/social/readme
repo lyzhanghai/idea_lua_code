@@ -381,3 +381,23 @@
 {"info":{"name":"","data":"成功"},"success":true}
 {"info":{"name":"topic_id","data":"不能为空"},"success":false}
 {"info":{"name":"","data":"请求失败"},"success":false}
+
+
+
+======================================================================================
+留言板保存
+1.接口地址 :/dsideal_yy/ypt/bbs/message/save
+2.前台参数
+    title：标题. --可以为空.
+    person_id：发送人id.
+    person_name ：发送人名称.
+    identity_id ：发送人身份.
+    message_type: 发送信息类别.--1.BBS 2.留言 3.博文
+    context : 信息内容.
+    topic_id: 主题帖id.第一次发送时为-1 以后用后台保存留言信息后的topic_id.
+    parent_id: 父帖id. 第一次可以为空.
+3.返回值
+  成功  {"info":{"name":"","data":"成功"},"success":true,"topic_id":1}
+  失败  {"info":{"name":"","data":"请求失败"},"success":false}
+======================================================================================
+

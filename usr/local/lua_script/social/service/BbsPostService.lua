@@ -10,10 +10,14 @@ local TS = require "resty.TS"
 local cjson = require "cjson"
 local date = require("social.common.date")
 local log = require("social.common.log")
-local BbsPostService = {}
-local db = {}
+local BbsPostService = {
+}
+local db = {
+
+}
 --------------------------------------------------------------------------------
 local function splitAddSql(fields, values, tableName)
+
     local templet = "INSERT INTO `%s` (`%s`) VALUES (%s)"
     local query = templet:format(tableName, table.concat(fields, "`,`"), table.concat(values, ","))
     return query;
@@ -93,18 +97,13 @@ function BbsPostService:savePost(post)
     log.debug("保存回帖信息sql:" .. sql);
     local result = DBUtil:querySingleSql(sql);
     --topicid,lastPostId,replyerPersonId,replyerIdentityId
-    local topicid = post.topicId;
-
-    local lastPostId = post.id;
-
-    local replyerPersonId = post.personId
-
-    local replyerIdentityId = post.identityId
-
-    local replyerPersonName = post.personName
-
-    local BbsTopicService = require("social.service.BbsTopicService")
-    BbsTopicService:updateTopicToDb(topicid, lastPostId, replyerPersonId, replyerIdentityId, replyerPersonName) --更新主题表的回复信息到数据库.
+    --    local topicid = post.topicId;
+    --    local lastPostId = post.id;
+    --    local replyerPersonId = post.personId
+    --    local replyerIdentityId = post.identityId
+    --    local replyerPersonName = post.personName
+    --    local BbsTopicService = require("social.service.BbsTopicService")
+    --    BbsTopicService:updateTopicToDb(topicid, lastPostId, replyerPersonId, replyerIdentityId, replyerPersonName) --更新主题表的回复信息到数据库.
 
     return result
 end
@@ -162,17 +161,13 @@ function BbsPostService:savePostToSsdb(post)
     db:hset("social_bbs_forum_topic_include_post", "topic_id_" .. post.topicId, postids)
     util:logkeys("social_bbs_forum_topic_include_post", "hset")
     --保存主题帖信息.
-    local topicid = post.topicId;
-
-    local lastPostId = post.id;
-
-    local replyerPersonId = post.personId
-
-    local replyerIdentityId = post.identityId
-
-    local replyerPersonName = post.personName
-    local BbsTopicService = require("social.service.BbsTopicService")
-    BbsTopicService:updateTopicToSsdb(topicid, lastPostId, replyerPersonId, replyerIdentityId, replyerPersonName) --更新主题表的回复信息.
+    --    local topicid = post.topicId;
+    --    local lastPostId = post.id;
+    --    local replyerPersonId = post.personId
+    --    local replyerIdentityId = post.identityId
+    --    local replyerPersonName = post.personName
+    --    local BbsTopicService = require("social.service.BbsTopicService")
+    --    BbsTopicService:updateTopicToSsdb(topicid, lastPostId, replyerPersonId, replyerIdentityId, replyerPersonName) --更新主题表的回复信息.
 end
 
 --------------------------------------------------------------------------------
@@ -223,12 +218,12 @@ end
 -- @param #string pagesize 每页显示条数.
 -- @result #table  {list=list,totalRow=totalRow,totalPage=totalPage}
 function BbsPostService:getPostsFromDb(bbsid, forumid, topicid, pagenum, pagesize)
-    if bbsid == nil or string.len(bbsid) == 0 then
-        error("bbs id 不能为空");
-    end
-    if forumid == nil or string.len(forumid) == 0 then
-        error("forum id 不能为空");
-    end
+--    if bbsid == nil or string.len(bbsid) == 0 then
+--        error("bbs id 不能为空");
+--    end
+--    if forumid == nil or string.len(forumid) == 0 then
+--        error("forum id 不能为空");
+--    end
     if topicid == nil or string.len(topicid) == 0 then
         error("topic id 不能为空");
     end
@@ -239,14 +234,15 @@ function BbsPostService:getPostsFromDb(bbsid, forumid, topicid, pagenum, pagesiz
         error("pagesize  不能为空");
     end
     local db = SsdbUtil:getDb()
-    local topic_keys = { "forumName", "title", "content", "personId", "personName", "createTime", "bReply", "viewCount", "replyCount", "identityId", "bBest", "bTop" }
+    local topic_keys = { "forumId", "forumName", "title", "content", "personId", "personName", "createTime", "bReply", "viewCount", "replyCount", "identityId", "bBest", "bTop" }
     local topic_key = "social_bbs_topicid_" .. topicid
     local topicResult = db:multi_hget(topic_key, unpack(topic_keys))
-    util:log_r_keys(topic_key, "multi_hget")
+    --util:log_r_keys(topic_key, "multi_hget")
     local topic = {}
     if topicResult and #topicResult > 0 then
         local _topic = util:multi_hget(topicResult, topic_keys)
-        topic.forum_name = _topic.forumName;
+        --topic.forum_name = _topic.forumName;
+        topic.forum_id = _topic.forumId;
         topic.title = _topic.title;
         topic.content = _topic.content;
         topic.person_id = _topic.personId;
@@ -258,14 +254,13 @@ function BbsPostService:getPostsFromDb(bbsid, forumid, topicid, pagenum, pagesiz
         topic.icon_url = getIcon(_topic.personId, _topic.identityId)
         topic.b_best = _topic.bBest;
         topic.b_top = _topic.bTop;
-        local forumResult = db:multi_hget("social_bbs_forum_" .. forumid, "name")
-        util:log_r_keys("social_bbs_forum_" .. forumid, "multi_hget")
+        local forumResult = db:multi_hget("social_bbs_forum_" .. _topic.forumId, "name")
         if forumResult and #forumResult > 0 then
             topic.forum_name = forumResult[2]
         end
         topic.reply_list = {}
-        local bbsidFilter = "filter=bbs_id," .. bbsid .. ";"
-        local forumidFilter = "filter=forum_id," .. forumid .. ";"
+        local bbsidFilter = ((bbsid == nil or string.len(bbsid) == 0) and "") or "filter=bbs_id," .. bbsid .. ";"
+        local forumidFilter =((forumid == nil or string.len(forumid) == 0) and "") or "filter=forum_id," .. forumid .. ";"
         local topicidFilter = "filter=topic_id," .. topicid .. ";"
         local filter = bbsidFilter .. forumidFilter .. topicidFilter
         local res, totalRow, totalPage = getPostSphinxData(filter, pagenum, pagesize);
@@ -276,16 +271,10 @@ function BbsPostService:getPostsFromDb(bbsid, forumid, topicid, pagenum, pagesiz
         if res then
             for i = 1, #res do
                 local key = "social_bbs_postid_" .. res[i]["id"]
-                --local key = "social_bbs_topicid_" .. topicid .. "_postid_" .. res[i]["id"]
                 local keys = { "id", "content", "personId", "personName", "createTime", "floor", "identityId", "bDelete" }
                 local _result = db:multi_hget(key, unpack(keys))
-                util:log_r_keys(key, "multi_hget")
-                --                util:logData("从ssdb中取出的数据")
-                --                util:logData(_result);
                 if _result and #_result > 0 then
                     local _post = util:multi_hget(_result, keys)
-                    --                    util:logData("转换后的数据")
-                    --                    util:logData(_post);
                     local t = {}
                     t.id = _post.id
                     t.person_id = _post.personId;

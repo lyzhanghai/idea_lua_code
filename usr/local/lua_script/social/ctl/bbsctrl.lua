@@ -49,11 +49,11 @@ local function topicSave()
     local breply = request:getStrParam("b_reply", true, true)
     local btop = request:getStrParam("b_top", false, false)
     local bbest = request:getStrParam("b_best", false, false)
-    if btop==nil or string.len(btop)==0 then
-        btop =0;
+    if btop == nil or string.len(btop) == 0 then
+        btop = 0;
     end
-    if bbest==nil or string.len(bbest)==0 then
-        bbest =0;
+    if bbest == nil or string.len(bbest) == 0 then
+        bbest = 0;
     end
     local content = request:getStrParam("content", true, false)
     local personName = request:getStrParam("person_name", true, true)
@@ -219,7 +219,7 @@ local function postSave()
     local postid = service:getPostPkId();
     post.id = postid
     local count = service:getPostCount(topicId)
-    post.floor = count+1 --此主题帖回复数+1即为楼数.
+    post.floor = count + 1 --此主题帖回复数+1即为楼数.
     local status, err = pcall(function()
         service:savePost(post)
     end)
@@ -228,23 +228,26 @@ local function postSave()
         error(err1, 1)
     end
     service:savePostToSsdb(post)
-    r.success = true
-    r.id = postid
+    -------------------------------
+    ---- 修改主题表信息.
+    local BbsTopicService = getService("BbsTopicService")
+    BbsTopicService:updateTopicToSsdb(post.topicId, post.id, post.personId, post.identityId, post.personName) --更新主题表的回复信息.
+    BbsTopicService:updateTopicToDb(post.topicId, post.id, post.personId, post.identityId, post.personName)
     --------------------------------
     ---- 计算最后一页.
     local _pagesize = tonumber(pageSize)
     local totalRow = count
     local totalPage = math.floor((totalRow + _pagesize - 1) / _pagesize)
-    r.pagenum = totalPage;
     --------------------------------
-    -- 对回复帖次数+1
+    ---- 对回复帖次数+1
     local totalService = getService("BbsTotalService")
     totalService:addForumPostCurrentDateNum(bbsId, forumId)
     totalService:addPostNumber(bbsId) --对此论坛的总帖数+1
-
     BbsService:updatePostForumToDb(forumId, postid)
     BbsService:updatePostForumToSsdb(forumId, postid)
-
+    r.success = true
+    r.id = postid
+    r.pagenum = totalPage;
     log.debug(cjson.encode(r))
     ngx.say(cjson.encode(r))
 end
@@ -312,8 +315,8 @@ local function delTopic()
     local db_status = service:deletTopicByIdToDb(topicId)
     local ssdb_status = service:deletTopicByIdToSsDb(topicId)
     local r = { success = false, info = { name = "", data = "成功" } }
-    log.debug("db_status: "..tostring(db_status));
-    log.debug("ssdb_status:"..tostring(ssdb_status));
+    log.debug("db_status: " .. tostring(db_status));
+    log.debug("ssdb_status:" .. tostring(ssdb_status));
     if db_status and ssdb_status then
         r.success = true;
         ngx.say(cjson.encode(r))
@@ -335,7 +338,73 @@ local function delPost()
         return;
     end
     ngx.say(cjson.encode(r))
+end
 
+-------------------------------------------------------------------------------
+--- 留言保存接口
+--- @param #string title标题。
+--- @param #string personId
+--- @param #string personName
+--- @param #string identityId
+--- @param #string messageType
+--- @param #string context
+--- @param #string topicId
+--- @param #string parentId
+local function saveMessage()
+    local bbsTopicService = getService("BbsTopicService")
+    local title = request:getStrParam("title", false, true)
+    local personId = request:getStrParam("person_id", true, true)
+    local personName = request:getStrParam("person_name", true, true)
+    local identityId = request:getStrParam("identity_id", true, true)
+    local messageType = request:getStrParam("message_type", true, true)
+    local context = request:getStrParam("context", true, true)
+    local topicId = request:getStrParam("topic_id", true, true)
+    local parentId = request:getStrParam("parent_id", false, true)
+    if topicId == "-1" then --第一次添加留言.
+        local topic = {}
+        topic.bbsId = -1;
+        topic.forumId = -1;
+        topic.categoryId = -1;
+        topic.title = title;
+        topic.personId = personId;
+        topic.content = "";
+        topic.personName = personName;
+        topic.identityId = identityId;
+        topic.messageType = messageType;
+        topicId = bbsTopicService:getTopicPkId() -- 生成topic主键id.
+        topic.id = topicId;
+        local status = pcall(function()
+            bbsTopicService:saveTopic(topic);
+            bbsTopicService:saveTopicToSsdb(topic)
+        end)
+    end
+    local post = {}
+    post.topicId = topicId
+    post.title = title
+    post.content = context
+    post.bbsId = -1
+    post.forumId = -1
+    post.personId = personId
+    post.personName = personName
+    post.identityId = identityId
+    post.parentId = parentId
+    local bbsPostService = getService("BbsPostService")
+    local postid = bbsPostService:getPostPkId(); -- 生成post主键id.
+    post.id = postid
+    local count = bbsPostService:getPostCount(topicId)
+    post.floor = count + 1 --此主题帖回复数+1即为楼数.
+    local db_status = pcall(function()
+        bbsPostService:savePost(post)
+        bbsPostService:savePostToSsdb(post)
+    end)
+    local r = { success = false, info = { name = "", data = "失败" } }
+    if db_status then
+        r.success = true;
+        r.info.data = "成功"
+        r.topic_id = topicId;
+    end
+    ngx.say(cjson.encode(r))
+    return;
 end
 
 ngx.log(ngx.ERR, "context:=========================" .. context)
@@ -350,6 +419,7 @@ local urls = {
     context .. '/topic/setbest', setBest,
     context .. '/topic/delete', delTopic,
     context .. '/post/delete', delPost,
+    context .. '/message/save', saveMessage,
 }
 local app = web.application(urls, nil)
 app:start()

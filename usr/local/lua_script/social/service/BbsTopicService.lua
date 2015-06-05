@@ -54,6 +54,7 @@ local function convertTopic(topic)
         SUPPORT_COUNT = topic.supportCount,
         OPPOSE_COUNT = topic.opposeCount,
         B_DELETE = topic.bDelete,
+        MESSAGE_TYPE= topic.messageType
     }
     log.debug("保存主题帖信息数据Table:");
     log.debug(t)
@@ -100,9 +101,9 @@ function M:saveTopicToSsdb(topic)
     if topic == nil or TableUtil:length(topic) == 0 then
         error("topic is null");
     end
-    if topic.forumId == nil or string.len(topic.forumId) == 0 then
-        error("forum id is null");
-    end
+--    if topic.forumId == nil or string.len(topic.forumId) == 0 then
+--        error("forum id is null");
+--    end
     topic.createTime = os.date("%Y-%m-%d %H:%M:%S")
     local db = SsdbUtil:getDb();
     topic.bDelete = 0;
@@ -110,16 +111,16 @@ function M:saveTopicToSsdb(topic)
     log.debug("保存主题帖的 key:" .. key)
     db:multi_hset(key, topic)
     util:logkeys(key, "multi_hset") --把key记录到日志文件 中.
-    local topicids_t, err = db:hget("social_bbs_forum_include_topic", "forum_id_" .. topic.forumId)
-    util:log_r_keys("social_bbs_forum_include_topic", "hget")
-    local topicids = ""
-    if topicids_t and string.len(topicids_t[1]) > 0 then
-        topicids = topicids_t[1] .. "," .. topic.id
-    else
-        topicids = topic.id
-    end
-    db:hset("social_bbs_forum_include_topic", "forum_id_" .. topic.forumId, topicids)
-    util:logkeys("social_bbs_forum_include_topic", "hset")
+--    local topicids_t, err = db:hget("social_bbs_forum_include_topic", "forum_id_" .. topic.forumId)
+--    util:log_r_keys("social_bbs_forum_include_topic", "hget")
+--    local topicids = ""
+--    if topicids_t and string.len(topicids_t[1]) > 0 then
+--        topicids = topicids_t[1] .. "," .. topic.id
+--    else
+--        topicids = topic.id
+--    end
+--    db:hset("social_bbs_forum_include_topic", "forum_id_" .. topic.forumId, topicids)
+--    util:logkeys("social_bbs_forum_include_topic", "hset")
 end
 
 --------------------------------------------------------------------------------

@@ -83,6 +83,7 @@
 			forum_id: 版块id
 			category_id:分类id(可以为空)
 			pageNumber : 页码
+			message_type:1.bbs,2.留言版,3.博文.
 			pageSize: 每页显示条数.
 			filterDate:筛选 时间1 前一天，2前两天，3前一周，4前一个月，5前三个月.
 			sortType:1,创建时间，2 回复，3查看
@@ -279,6 +280,7 @@
 2.前台传参：	bbs_id：论坛id
 			pageNumber : 页码
 			pageSize: 每页显示条数.
+			message_type:1.bbs,2.留言版,3.博文.
             searchText:搜所内容
 3.返回值：
 
@@ -383,9 +385,68 @@
 {"info":{"name":"","data":"请求失败"},"success":false}
 
 
+======================================================================================
+空间查询发帖信息
+1.接口地址：/dsideal_yy/bbs/topic/getTopicByUserInfo
+2.前台参数：
+        person_id：用户id.
+        identity_id:身份id.
+        pageNumber:
+        pageSize:
+3.返回值
+    {
+        "success":true,
+        "pageNumber": 1,
+        "totalPage": 总页数,
+        "totalRow":总记录数,
+        "pageSize":每页条数,
+        "list":[
+            {id: id,
+            title:标题,
+            bbs_id：bbsid.
+            person_id:发主题帖人id,
+            person_name:发主题帖人名,
+            create_time:发主题帖时间,
+            replyer_person_name:
+            replyer_time:最后回帖时间}
+        ]
+
+    }
+    {"info":{"name":"","data":"成功"},"success":true}
+======================================================================================
+    空间查询回帖信息
+    1.接口地址：/dsideal_yy/bbs/post/getPostByUserInfo
+    2.前台参数：
+            person_id：用户id.
+            identity_id:身份id.
+            pageNumber:
+            pageSize:
+    3.返回值
+        {
+            "success":true,
+            "pageNumber": 1,
+            "totalPage": 总页数,
+            "totalRow":总记录数,
+            "pageSize":每页条数,
+            "list":[
+                {id: id,
+                title:标题,
+                person_id:发主题帖人id,
+                person_name:发主题帖人名,
+                create_time:发主题帖时间,
+                replyer_person_name:
+                replyer_time:最后回帖时间
+                floor：楼
+                b_delete:是否删除
+                bbs_id:bbsid
+                }
+            ]
+
+        }
+        {"info":{"name":"","data":"成功"},"success":true}
 
 ======================================================================================
-留言板保存
+留言板保存 (post方式.)
 1.接口地址 :/dsideal_yy/ypt/bbs/message/save
 2.前台参数
     title：标题. --可以为空.

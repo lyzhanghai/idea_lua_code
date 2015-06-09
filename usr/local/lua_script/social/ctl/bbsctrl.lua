@@ -340,7 +340,7 @@ local function delPost()
     ngx.say(cjson.encode(r))
 end
 
--------------------------------------------------------------------------------
+-------------------------------------------------
 --- 留言保存接口
 --- @param #string title标题。
 --- @param #string personId
@@ -374,7 +374,10 @@ local function saveMessage()
         topicId = bbsTopicService:getTopicPkId() -- 生成topic主键id.
         topic.id = topicId;
         local status = pcall(function()
-            bbsTopicService:saveTopic(topic);
+            local dbResult = bbsTopicService:saveTopic(topic);
+            if not dbResult then
+                error("topic db .信息保存失败.")
+            end
             bbsTopicService:saveTopicToSsdb(topic)
         end)
     end
@@ -387,17 +390,21 @@ local function saveMessage()
     post.personId = personId
     post.personName = personName
     post.identityId = identityId
-    post.parentId = parentId
+    post.parentId = ((parentId == nil or string.len(parentId) == 0) and "0") or parentId
     local bbsPostService = getService("BbsPostService")
     local postid = bbsPostService:getPostPkId(); -- 生成post主键id.
     post.id = postid
     local count = bbsPostService:getPostCount(topicId)
     post.floor = count + 1 --此主题帖回复数+1即为楼数.
     local db_status = pcall(function()
-        bbsPostService:savePost(post)
+        local dbResult = bbsPostService:savePost(post)
+        if not dbResult then
+            error("post db .信息保存失败.")
+        end
         bbsPostService:savePostToSsdb(post)
     end)
     local r = { success = false, info = { name = "", data = "失败" } }
+    log.debug(db_status)
     if db_status then
         r.success = true;
         r.info.data = "成功"

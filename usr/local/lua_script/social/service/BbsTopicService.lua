@@ -305,7 +305,7 @@ end
 -- @param #string filterDate 筛选时间
 -- @param #string sortType 排序类型.
 -- @result #table  {list=list,totalRow=totalRow,totalPage=totalPage}
-function M:getTopicsFromSsdb(bbsid, forumid, categoryid, searchText, filterDate, sortType, best, pagenum, pagesize)
+function M:getTopicsFromSsdb(bbsid, forumid, categoryid, searchText, filterDate, sortType, best,messageType, pagenum, pagesize)
     if bbsid == nil or string.len(bbsid) == 0 then
         error("bbs id 不能为空");
     end
@@ -313,10 +313,12 @@ function M:getTopicsFromSsdb(bbsid, forumid, categoryid, searchText, filterDate,
     local offset = pagesize * pagenum - pagesize
     local limit = pagesize
     local str_maxmatches = "10000"
-    local queryStr = "%s%s%s%s%s%sfilter=b_delete,0;%smaxmatches=" .. str_maxmatches .. ";offset=" .. offset .. ";limit=" .. limit .. ""
+    local queryStr = "%s%s%s%s%s%s%sfilter=b_delete,0;%smaxmatches=" .. str_maxmatches .. ";offset=" .. offset .. ";limit=" .. limit .. ""
     local sql = "SELECT SQL_NO_CACHE id FROM T_SOCIAL_BBS_TOPIC_SPHINXSE WHERE query=%s;SHOW ENGINE SPHINX  STATUS;"
     local bbsidFilter = "filter=bbs_id," .. bbsid .. ";"
     local forumidFilter = ((forumid == nil or string.len(forumid) == 0) and "") or "filter=forum_id," .. forumid .. ";"
+    messageType=  ((messageType == nil or string.len(messageType) == 0) and "1") or messageType
+    local messageTypeFilter = "filter=message_type," .. messageType .. ";"
     local categoryidFilter = ((categoryid == nil or string.len(categoryid) == 0) and "") or "filter=category_id," .. categoryid .. ";"
     local bestFilter = ((best == nil or string.len(best) == 0) and "") or "filter=b_best,1;"
     local searchTextFilter = ((searchText == nil or string.len(searchText) == 0) and "") or searchText .. ";"
@@ -349,7 +351,7 @@ function M:getTopicsFromSsdb(bbsid, forumid, categoryid, searchText, filterDate,
         sort = sort .. "ts desc;"
     end
     local _filterDate = ((filterDate == nil or string.len(filterDate) == 0 or filterDate == "0") and "") or "select=(IF(ts>" .. beforeDate .. ",1,0) AND IF(ts<" .. currentDate .. ",1,0)) as match_qq;filter=match_qq,1;"
-    queryStr = string.format(queryStr, searchTextFilter, bbsidFilter, forumidFilter, categoryidFilter, bestFilter, _filterDate, sort);
+    queryStr = string.format(queryStr, searchTextFilter, bbsidFilter, forumidFilter, categoryidFilter, bestFilter,messageTypeFilter, _filterDate, sort);
     queryStr = ngx.quote_sql_str(queryStr)
     log.debug("queryStr :" .. queryStr)
     sql = string.format(sql, queryStr)

@@ -61,19 +61,21 @@ for i=1,#t_ids do
         table.insert(t_sqls,dsql)
     end
 end
+local usql = "UPDATE t_social_gallery_folder SET picture_num = picture_num - "..#t_sqls.." WHERE id = "..quote(folder_id)..";"
+table.insert(t_sqls,usql)
 
 local DBUtil = require "common.DBUtil";
 local dresult = DBUtil:batchExecuteSqlInTx(t_sqls, 1000)
 
 --照片数-n
-if dresult then
-    local usql = "UPDATE t_social_gallery_folder SET picture_num = picture_num - "..#t_sqls.." WHERE id = "..quote(folder_id)
-    local uresutl, err = mysql:query(usql)
-    if not uresutl then
-        say("{\"success\":false,\"info\":\""..err.."\"}")
-        return
-    end
-end
+--if dresult then
+--   local usql = "UPDATE t_social_gallery_folder SET picture_num = picture_num - "..#t_sqls.." WHERE id = "..quote(folder_id)
+--    local uresutl, err = mysql:query(usql)
+--    if not uresutl then
+--        say("{\"success\":false,\"info\":\""..err.."\"}")
+ --       return
+--    end
+--end
 
 --return
 local rr = {}

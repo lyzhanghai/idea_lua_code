@@ -63,11 +63,17 @@ for i=1,#t_ids do
         table.insert(t_sqls,dsql)
     end
 end
+--从照片数-n
+local usql = "UPDATE t_social_gallery_folder SET picture_num = picture_num - "..#t_sqls.." WHERE id = "..quote(from_folder_id)..";"
+table.insert(t_sqls,usql)
+--照片数+n
+local usql1 = "UPDATE t_social_gallery_folder SET picture_num = picture_num + "..(#t_sqls-1).." WHERE id = "..quote(to_folder_id)..";"
+table.insert(t_sqls,usql1)
 
 local DBUtil = require "common.DBUtil";
 local dresult = DBUtil:batchExecuteSqlInTx(t_sqls, 1000)
 
---照片数
+--[[照片数
 if dresult then
     --从照片数-n
     local usql = "UPDATE t_social_gallery_folder SET picture_num = picture_num - "..#t_sqls.." WHERE id = "..quote(from_folder_id)
@@ -84,6 +90,7 @@ if dresult then
         return
     end
 end
+]]
 
 --return
 local rr = {}

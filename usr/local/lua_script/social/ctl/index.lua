@@ -114,21 +114,23 @@ end
 -- @param #string pageNumber : 页码
 -- @param #string pageSize: 每页显示条数.
 -- @param #string filterTopic 主题筛选.
+-- @param #string message_type 类型1.bbs 2.留言版，3博客
 -- @param #string filterDate 时间筛选(1:一天，2:两天，3:一周，4:一个月，5:三个月)
 -- @param #string sortType 排序（1:发帖时间2:回复时间,3:查看时间,4:最后发表,5:热门）
 local function topicList()
     log.debug("topicList start");
     --做sphinx操作，才能实现列表
-    local service = require("social.service.BbsTopicService")
+    local topicService = require("social.service.BbsTopicService")
     local bbsid = request:getStrParam('bbs_id', true, true)
     local forumid = request:getStrParam('forum_id', false, true)
     local categoryid = request:getStrParam('category_id', false, false)
-    local pageNumber = request:getStrParam('pageNumber', true, true)
-    local pageSize = request:getStrParam('pageSize', true, true)
+    local messageType = request:getStrParam('message_type', false, true)
+    local pageNumber = tonumber(request:getStrParam('pageNumber', true, true))
+    local pageSize = tonumber(request:getStrParam('pageSize', true, true))
     local filterDate = request:getStrParam('filterDate', false, false)
     local sortType = request:getStrParam('sortType', false, false)
     local best = request:getStrParam('best', false, true)
-    local result = service:getTopicsFromSsdb(bbsid, forumid, categoryid, nil, filterDate, sortType, best, pageNumber, pageSize)
+    local result = topicService:getTopicsFromSsdb(bbsid, forumid, categoryid, nil, filterDate, sortType, best,messageType, pageNumber, pageSize)
     if result then
         cjson.encode_empty_table_as_object(false)
         result.success = true;
@@ -154,6 +156,7 @@ local function topicSearchList()
     --做sphinx操作，才能实现列表
     local service = getService("BbsTopicService")
     local bbsid = request:getStrParam("bbs_id", true, true)
+    local messageType = request:getStrParam('message_type', true, true)
     local pageNumber = request:getStrParam("pageNumber", true, true)
     local pageSize = request:getStrParam("pageSize", true, true)
     local searchText = request:getStrParam("searchText", true, true)
@@ -162,7 +165,7 @@ local function topicSearchList()
     searchText = ngx.decode_base64(searchText)
     log.debug("searchText 搜所内容base64解码后:")
     log.debug(searchText)
-    local result = service:getTopicsFromSsdb(bbsid, nil, nil, searchText, nil, nil, nil, pageNumber, pageSize)
+    local result = service:getTopicsFromSsdb(bbsid, nil, nil, searchText, nil, nil, nil, messageType,pageNumber, pageSize)
     if result then
         cjson.encode_empty_table_as_object(false)
         result.success = true;
@@ -298,8 +301,8 @@ local urls = {
     context .. '/topic/search', topicSearchList,
     context .. '/topic/view', topicView,
     context .. '/bbsList$', getBbsList,
-    context .. '/getTopicByUserInfo', getTopicByUserInfo,
-    context .. '/getPostByUserInfo', getPostByUserInfo,
+    context .. '/topic/getTopicByUserInfo', getTopicByUserInfo,
+    context .. '/post/getPostByUserInfo', getPostByUserInfo,
 }
 local app = web.application(urls, nil)
 app:start()

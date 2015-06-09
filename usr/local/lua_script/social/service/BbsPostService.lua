@@ -96,6 +96,7 @@ function BbsPostService:savePost(post)
     local sql = splitAddSql(column, fileds, "T_SOCIAL_BBS_POST")
     log.debug("保存回帖信息sql:" .. sql);
     local result = DBUtil:querySingleSql(sql);
+    log.debug(result)
     --topicid,lastPostId,replyerPersonId,replyerIdentityId
     --    local topicid = post.topicId;
     --    local lastPostId = post.id;
@@ -360,7 +361,7 @@ function BbsPostService:getPostListByUserInfo(personId, identityId, pagenum, pag
         for i = 1, #res do
             -- local key = "social_bbs_topicid_" .. topicid .. "_postid_" .. res[i]["id"]
             local key = "social_bbs_postid_" .. res[i]["id"]
-            local keys = { "id", "content", "personId", "personName", "createTime", "floor", "identityId", "bDelete" }
+            local keys = { "id", "content", "personId", "personName", "createTime", "floor", "identityId", "bDelete" ,"bbsId"}
             local _result = db:multi_hget(key, unpack(keys))
             if _result and #_result > 0 then
                 local _post = util:multi_hget(_result, keys)
@@ -373,6 +374,7 @@ function BbsPostService:getPostListByUserInfo(personId, identityId, pagenum, pag
                 t.floor = _post.floor;
                 t.content = _post.content
                 t.b_delete = _post.bDelete;
+                t.bbs_id=_post.bbsId;
                 table.insert(post.list, t)
             end
         end

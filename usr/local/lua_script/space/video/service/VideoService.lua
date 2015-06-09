@@ -253,6 +253,18 @@ function _M.deleteVideo(ids, folder_id)
     return false;
 end
 
+
+local function calculatePage(pageNumber,pageSize,totalRow)
+    local _pagenum = tonumber(pageNumber)
+    local _pagesize = tonumber(pageSize)
+    local totalRow = totalRow
+    local totalPage = math.floor((totalRow + _pagesize - 1) / _pagesize)
+    if totalPage > 0 and tonumber(pageNumber) > totalPage then
+        _pagenum = totalPage
+    end
+    local offset = _pagesize * _pagenum - _pagesize
+    return offset,_pagesize,totalPage
+end
 -----------------------------------------------------------------
 -- 获取视频列表.
 -- @param #string Folder_id：文件夹id
@@ -266,29 +278,27 @@ function _M.getVideoList(folderId, pageNumber, pageSize)
     })
     local count_sql = "SELECT COUNT(*) as totalRow FROM T_SOCIAL_VIDEO T WHERE T.FOLDER_ID=" .. folderId .. " AND IS_DELETE=0"
     local list_sql = "SELECT *  FROM T_SOCIAL_VIDEO T WHERE T.FOLDER_ID=" .. folderId .. " AND IS_DELETE=0"
-    log.debug("获取主题帖列表.count_sql:" .. count_sql);
+    log.debug("获取列表.count_sql:" .. count_sql);
     local count = DBUtil:querySingleSql(count_sql);
     if TableUtil:length(count) == 0 then
         return false;
     end
     log.debug("获取视频列表.count:" .. count[1].totalRow);
-    local _pagenum = tonumber(pageNumber)
-    local _pagesize = tonumber(pageSize)
-    local totalRow = count[1].totalRow
-    local totalPage = math.floor((totalRow + _pagesize - 1) / _pagesize)
-    local offset = _pagesize * _pagenum - _pagesize
+    local offset,_pagesize,totalPage = calculatePage(pageNumber,pageSize,count[1].totalRow);
     list_sql = list_sql .. " LIMIT " .. offset .. "," .. _pagesize
     log.debug("获取视频列表.list sql:" .. list_sql);
     local list = DBUtil:querySingleSql(list_sql);
-    if list then
+    local result = {totalRow = count[1].totalRow, totalPage = totalPage, pageNumber = pageNumber, pageSize = pageSize }
+    --log.debug(type(list[1]))
+    if list and list[1] then
         log.debug("获取视频列表.list :");
         log.debug(list)
         reloadResourceM3U8Info(list) --加载m3u8信息.
-        local result = { video_list = list, totalRow = totalRow, totalPage = totalPage, pageNumber = pageNumber, pageSize = pageSize }
-        return result;
+        result.video_list = list
     else
-        return false;
+        result.video_list = {}
     end
+    return result;
 end
 
 -----------------------------------------------------------------

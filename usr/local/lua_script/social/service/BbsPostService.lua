@@ -211,6 +211,14 @@ local function getIcon(personid, identityid)
     return icon_url;
 end
 
+
+
+local function getPostById(postId)
+    local key = "social_bbs_postid_" .. postId
+    local keys = { "id", "content", "personId", "personName", "createTime", "floor", "identityId", "bDelete" }
+    local _result = db:multi_hget(key, unpack(keys))
+    return _result;
+end
 --
 ---------------------------------------------------------------------------------
 -- 分页获取回复帖
@@ -274,7 +282,7 @@ function BbsPostService:getPostsFromDb(bbsid, forumid, topicid, pagenum, pagesiz
         if res then
             for i = 1, #res do
                 local key = "social_bbs_postid_" .. res[i]["id"]
-                local keys = { "id", "content", "personId", "personName", "createTime", "floor", "identityId", "bDelete" }
+                local keys = { "id", "content", "personId", "personName", "createTime", "floor", "identityId", "bDelete","parentId" }
                 local _result = db:multi_hget(key, unpack(keys))
                 if _result and #_result > 0 then
                     local _post = util:multi_hget(_result, keys)
@@ -282,11 +290,22 @@ function BbsPostService:getPostsFromDb(bbsid, forumid, topicid, pagenum, pagesiz
                     t.id = _post.id
                     t.person_id = _post.personId;
                     t.person_name = _post.personName
+                    t.identity_id = _post.identityId
                     t.create_time = _post.createTime;
                     t.icon_url = getIcon(_post.personId, _post.identityId)
                     t.floor = _post.floor;
                     t.content = _post.content
                     t.b_delete = _post.bDelete;
+                    t.parent_id = _post.parentId
+                    local key_p = "social_bbs_postid_" .. _post.parentId
+                    local keys_p = { "id", "content", "personId", "personName", "createTime", "floor", "identityId", "bDelete" }
+                    local _result_p = db:multi_hget(key_p, unpack(keys_p))
+                    if _result_p and #_result_p > 0 then
+                        local _post_p = util:multi_hget(_result_p, keys_p)
+                        t.parent_identity_id = _post_p.identityId
+                        t.parent_person_name = _post_p.personName;
+                        t.parent_person_id = _post_p.personId
+                    end
                     table.insert(topic.reply_list, t)
                 end
             end

@@ -640,7 +640,7 @@ function M:getTopicByTypeIdAndType(typeId, messageType)
     if messageType == nil or string.len(messageType) == 0 then
         error("message_type不能为空.")
     end
-    local sql = "SELECT * FROM T_SOCIAL_BBS_TOPIC T WHERE T.MESSAGE_TYPE=%s AND T.TYPE_ID=%"
+    local sql = "SELECT * FROM T_SOCIAL_BBS_TOPIC T WHERE T.MESSAGE_TYPE=%s AND T.TYPE_ID=%s"
     sql = sql:format(typeId, messageType)
     log.debug("getTopicByTypeIdAndType:sql: " .. sql);
     local result = DBUtil:querySingleSql(sql);

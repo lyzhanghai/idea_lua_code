@@ -214,7 +214,11 @@
 			"person_id":发帖人id 可通过后台获取(登录人),
 			"floor":楼层,
 			"icon_url":头像.
-			"create_time":回帖时间},
+			"create_time":回帖时间
+			"parent_identity_id":
+			"parent_person_name":
+			"parent_person_id":
+			},
 		]
 	}	
 	

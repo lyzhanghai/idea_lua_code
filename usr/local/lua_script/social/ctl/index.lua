@@ -202,7 +202,9 @@ local function topicView()
         if topicResult and topicResult[1] then
             topicid = topicResult[1]['id']
         else
-            error("没有查询到topic_id")
+            local r = {success=true,reply_list={}}
+            ngx.say(cjson.encode(r))
+            return;
         end
     end
     local bbsid = request:getStrParam("bbs_id", false, true)

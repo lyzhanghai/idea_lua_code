@@ -7,7 +7,10 @@
 --
 
 
-local Constant = {}
+local Constant = {
+    MESSAGE_TYPE_BBS = 1,
+    MESSAGE_TYPE_BOARD =2,
+}
 --- 转换orgType
 --- 省101 市102 区103 校104 班105
 --- 机构类型：1省，2市，3区，4校，5分校，6部门，7班级

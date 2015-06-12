@@ -358,10 +358,14 @@ local function saveMessage()
     local identityId = request:getStrParam("identity_id", true, true)
     local messageType = request:getStrParam("message_type", true, true)
     local context = request:getStrParam("context", true, true)
-    local topicId = request:getStrParam("topic_id", true, true)
+    --  local topicId = request:getStrParam("topic_id", true, true)
+    local typeId = request:getStrParam("type_id", true, true);
     local parentId = request:getStrParam("parent_id", false, true)
-    if topicId == "-1" then --第一次添加留言.
-        local topic = {}
+    --if topicId == "-1" then --第一次添加留言.
+
+    local topicResult = bbsTopicService:getTopicByTypeIdAndType(typeId, messageType)
+    local topic = {}
+    if not topicResult or not topicResult[1] then
         topic.bbsId = -1;
         topic.forumId = -1;
         topic.categoryId = -1;
@@ -371,7 +375,8 @@ local function saveMessage()
         topic.personName = personName;
         topic.identityId = identityId;
         topic.messageType = messageType;
-        topicId = bbsTopicService:getTopicPkId() -- 生成topic主键id.
+        topic.topicId = typeId;
+        local topicId = bbsTopicService:getTopicPkId() -- 生成topic主键id.
         topic.id = topicId;
         local status = pcall(function()
             local dbResult = bbsTopicService:saveTopic(topic);
@@ -380,21 +385,26 @@ local function saveMessage()
             end
             bbsTopicService:saveTopicToSsdb(topic)
         end)
+    else
+        topic.id = topicResult[1]['id'];
     end
+    --end
+    log.debug("数据库中查询的topicId :"..topic.id);
     local post = {}
-    post.topicId = topicId
+    post.topicId = topic.id
     post.title = title
     post.content = context
     post.bbsId = -1
     post.forumId = -1
     post.personId = personId
     post.personName = personName
+    post.messageType = messageType;
     post.identityId = identityId
     post.parentId = ((parentId == nil or string.len(parentId) == 0) and "0") or parentId
     local bbsPostService = getService("BbsPostService")
     local postid = bbsPostService:getPostPkId(); -- 生成post主键id.
     post.id = postid
-    local count = bbsPostService:getPostCount(topicId)
+    local count = bbsPostService:getPostCount(post.topicId)
     post.floor = count + 1 --此主题帖回复数+1即为楼数.
     local db_status = pcall(function()
         local dbResult = bbsPostService:savePost(post)
@@ -403,12 +413,13 @@ local function saveMessage()
         end
         bbsPostService:savePostToSsdb(post)
     end)
+
     local r = { success = false, info = { name = "", data = "失败" } }
     log.debug(db_status)
     if db_status then
         r.success = true;
         r.info.data = "成功"
-        r.topic_id = topicId;
+       -- r.topic_id = topicId;
     end
     ngx.say(cjson.encode(r))
     return;

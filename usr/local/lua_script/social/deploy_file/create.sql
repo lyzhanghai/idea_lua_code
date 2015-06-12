@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS `t_social_bbs_post` (
   `b_delete` int(2) DEFAULT '0' COMMENT '0未删除，1已删除',
   `ts` bigint(20) DEFAULT '0' COMMENT '时间戳',
   `update_ts` bigint(20) DEFAULT '0' COMMENT '时间戳',
+  `message_type` int(2) DEFAULT '1' COMMENT '1.BBS 2.留言 3.博文',
   PRIMARY KEY (`id`),
   KEY `update_ts` (`update_ts`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='回帖表';
@@ -113,6 +114,7 @@ CREATE TABLE IF NOT EXISTS `t_social_bbs_topic` (
   `bbs_id` int(11) NOT NULL COMMENT 'bbsid',
   `forum_id` int(11) NOT NULL COMMENT '版块id',
   `title` varchar(100) NOT NULL COMMENT '标题',
+  `message_type` int(2) DEFAULT '1' COMMENT '1.BBS 2.留言 3.博文',
   `first_post_id` int(11) NOT NULL COMMENT '主题帖id',
   `ts` bigint(20) NOT NULL COMMENT '时间戳',
   `update_ts` bigint(20) NOT NULL COMMENT '时间戳',
@@ -134,6 +136,7 @@ CREATE TABLE IF NOT EXISTS `t_social_bbs_topic` (
   `support_count` int(11) DEFAULT '0' COMMENT '支持数',
   `oppose_count` int(11) DEFAULT '0' COMMENT '反对数',
   `b_delete` int(2) DEFAULT '0' COMMENT '''0:未删 1：已删'',',
+  `type_id` varchar(32) DEFAULT NULL COMMENT '类型id.',
   PRIMARY KEY (`id`),
   KEY `update_ts` (`update_ts`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='bbs主题帖表';

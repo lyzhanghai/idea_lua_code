@@ -8,6 +8,7 @@ local util = require("social.common.util")
 local cjson = require "cjson"
 local request = require("social.common.request")
 local context = ngx.var.path_uri
+local constant = require("social.common.constant")
 local log = require("social.common.log")
 
 -----
@@ -130,7 +131,7 @@ local function topicList()
     local filterDate = request:getStrParam('filterDate', false, false)
     local sortType = request:getStrParam('sortType', false, false)
     local best = request:getStrParam('best', false, true)
-    local result = topicService:getTopicsFromSsdb(bbsid, forumid, categoryid, nil, filterDate, sortType, best,messageType, pageNumber, pageSize)
+    local result = topicService:getTopicsFromSsdb(bbsid, forumid, categoryid, nil, filterDate, sortType, best, messageType, pageNumber, pageSize)
     if result then
         cjson.encode_empty_table_as_object(false)
         result.success = true;
@@ -156,7 +157,7 @@ local function topicSearchList()
     --做sphinx操作，才能实现列表
     local service = getService("BbsTopicService")
     local bbsid = request:getStrParam("bbs_id", true, true)
-    local messageType = request:getStrParam('message_type', true, true)
+    local messageType = request:getStrParam('message_type', false, true)
     local pageNumber = request:getStrParam("pageNumber", true, true)
     local pageSize = request:getStrParam("pageSize", true, true)
     local searchText = request:getStrParam("searchText", true, true)
@@ -165,7 +166,7 @@ local function topicSearchList()
     searchText = ngx.decode_base64(searchText)
     log.debug("searchText 搜所内容base64解码后:")
     log.debug(searchText)
-    local result = service:getTopicsFromSsdb(bbsid, nil, nil, searchText, nil, nil, nil, messageType,pageNumber, pageSize)
+    local result = service:getTopicsFromSsdb(bbsid, nil, nil, searchText, nil, nil, nil, messageType, pageNumber, pageSize)
     if result then
         cjson.encode_empty_table_as_object(false)
         result.success = true;
@@ -191,7 +192,19 @@ end
 local function topicView()
     local postService = getService("BbsPostService")
     local topicService = getService("BbsTopicService")
-    local topicid = request:getStrParam("topic_id", true, true)
+    local messageType = request:getStrParam("message_type", true, true)
+    local topicid;
+    if messageType == constant.MESSAGE_TYPE_BBS then --如果是bbs
+        topicid = request:getStrParam("topic_id", true, true)
+    else
+        local typeId = request:getStrParam("type_id", true, true)
+        local topicResult = topicService:getTopicByTypeIdAndType(typeId, messageType)
+        if topicResult and topicResult[1] then
+            topicid = topicResult[1]['id']
+        else
+            error("没有查询到topic_id")
+        end
+    end
     local bbsid = request:getStrParam("bbs_id", false, true)
     local forumid = request:getStrParam("forum_id", false, true)
     local pageNumber = request:getStrParam("pageNumber", true, true)
@@ -251,10 +264,11 @@ end
 local function getTopicByUserInfo()
     local personId = request:getStrParam("person_id", true, true)
     local identityId = request:getStrParam("identity_id", true, true)
+    local messageType = request:getStrParam("message_type", true, true)
     local pageNumber = request:getStrParam("pageNumber", true, true)
     local pageSize = request:getStrParam("pageSize", true, true)
     local topicService = getService("BbsTopicService")
-    local result = topicService:getTopicListByUserInfo(personId, identityId, pageNumber, pageSize)
+    local result = topicService:getTopicListByUserInfo(personId, identityId, messageType, pageNumber, pageSize)
     cjson.encode_empty_table_as_object(false)
     if result then
         result.success = true
@@ -274,11 +288,12 @@ end
 local function getPostByUserInfo()
     local personId = request:getStrParam("person_id", true, true)
     local identityId = request:getStrParam("identity_id", true, true)
+    local messageType = request:getStrParam("message_type", true, true)
     local pageNumber = request:getStrParam("pageNumber", true, true)
     local pageSize = request:getStrParam("pageSize", true, true)
     local postService = getService("BbsPostService")
-    log.debug("personId :"..personId);
-    local result = postService:getPostListByUserInfo(personId, identityId, pageNumber, pageSize)
+    log.debug("personId :" .. personId);
+    local result = postService:getPostListByUserInfo(personId, identityId, messageType, pageNumber, pageSize)
     cjson.encode_empty_table_as_object(false)
     if result then
         result.success = true

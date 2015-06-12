@@ -183,7 +183,9 @@
 2前台参数
 		bbs_id
 		forum_id
-		topic_id ：主题帖id
+		topic_id ：主题帖id 如果不传topic_id 则用type_id和type从数据库中获取topic_id.
+		type_id :
+		type:信息类型.
 		pageNumber : 页码
 		pageSize: 每页显示条数.
 3返回值：
@@ -391,6 +393,7 @@
 2.前台参数：
         person_id：用户id.
         identity_id:身份id.
+        message_type:
         pageNumber:
         pageSize:
 3.返回值
@@ -419,6 +422,7 @@
     2.前台参数：
             person_id：用户id.
             identity_id:身份id.
+            message_type:
             pageNumber:
             pageSize:
     3.返回值
@@ -439,6 +443,9 @@
                 floor：楼
                 b_delete:是否删除
                 bbs_id:bbsid
+                topic_id:主题id.
+                topic_title:主题标题
+                forum_id:
                 }
             ]
 
@@ -455,7 +462,8 @@
     identity_id ：发送人身份.
     message_type: 发送信息类别.--1.BBS 2.留言 3.博文
     context : 信息内容.
-    topic_id: 主题帖id.第一次发送时为-1 以后用后台保存留言信息后的topic_id.
+    --topic_id: 主题帖id.第一次发送时为-1 以后用后台保存留言信息后的topic_id.
+    type_id : 类型id.需要保证唯一
     parent_id: 父帖id. 第一次可以为空.
 3.返回值
   成功  {"info":{"name":"","data":"成功"},"success":true,"topic_id":1}

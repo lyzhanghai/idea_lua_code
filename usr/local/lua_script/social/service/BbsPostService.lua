@@ -70,6 +70,7 @@ local function convertPost(post)
         TS = create_ts,
         UPDATE_TS = create_ts,
         B_DELETE = post.bDelete,
+        MESSAGE_TYPE = post.messageType
     }
     log.debug("保存回帖信息数据Table:");
     log.debug(t)
@@ -172,18 +173,19 @@ function BbsPostService:savePostToSsdb(post)
 end
 
 --------------------------------------------------------------------------------
-local function getPostSphinxData(filter, pagenum, pagesize)
+local function getPostSphinxData(filter, pagenum, pagesize,sort)
     local offset = pagesize * pagenum - pagesize
     local limit = pagesize
     local str_maxmatches = "10000"
     local db = DBUtil:getDb();
-    local sql = "SELECT SQL_NO_CACHE id FROM T_SOCIAL_BBS_POST_SPHINXSE WHERE query='%ssort=attr_asc:ts;maxmatches=" .. str_maxmatches .. ";offset=" .. offset .. ";limit=" .. limit .. "';SHOW ENGINE SPHINX  STATUS;"
-    sql = string.format(sql, filter);
+    local sortf = sort and sort or "attr_asc:ts;"
+    local sql = "SELECT SQL_NO_CACHE id FROM T_SOCIAL_BBS_POST_SPHINXSE WHERE query='%ssort=%smaxmatches=" .. str_maxmatches .. ";offset=" .. offset .. ";limit=" .. limit .. "';SHOW ENGINE SPHINX  STATUS;"
+    sql = string.format(sql, filter,sortf);
     log.debug("sql :" .. sql)
     local res = db:query(sql)
     --去第二个结果集中的Status中截取总个数
     local res1 = db:read_result()
-    log.debug(res1)
+    --log.debug(res1)
     local _, s_str = string.find(res1[1]["Status"], "found: ")
     local e_str = string.find(res1[1]["Status"], ", time:")
     local totalRow = string.sub(res1[1]["Status"], s_str + 1, e_str - 1)
@@ -198,11 +200,11 @@ end
 --- @param #string personid
 local function getIcon(personid, identityid)
     local info_key = "space_ajson_personbaseinfo_" .. personid .. "_" .. identityid;
-    log.debug("获取头像的 key：" .. info_key);
+    --log.debug("获取头像的 key：" .. info_key);
     local iconResult = SsdbUtil:getDb():get(info_key)
     local icon_url = "";
     if iconResult and iconResult[1] and string.len(iconResult[1]) > 0 then
-        log.debug("获取头像的 value：" .. iconResult[1]);
+       -- log.debug("获取头像的 value：" .. iconResult[1]);
         local jsonObj = cjson.decode(iconResult[1])
         icon_url = jsonObj.space_avatar_fileid
     end
@@ -264,7 +266,7 @@ function BbsPostService:getPostsFromDb(bbsid, forumid, topicid, pagenum, pagesiz
         local forumidFilter =((forumid == nil or string.len(forumid) == 0) and "") or "filter=forum_id," .. forumid .. ";"
         local topicidFilter = "filter=topic_id," .. topicid .. ";"
         local filter = bbsidFilter .. forumidFilter .. topicidFilter
-        local res, totalRow, totalPage = getPostSphinxData(filter, pagenum, pagesize);
+        local res, totalRow, totalPage = getPostSphinxData(filter, pagenum, pagesize,"attr_asc:ts;");
         topic.totalRow = totalRow;
         topic.totalPage = totalPage;
         topic.pageNumber = pagenum;
@@ -332,13 +334,16 @@ end
 -- @param #string identityId.
 -- @param #string pagenum.
 -- @param #string pagesize.
-function BbsPostService:getPostListByUserInfo(personId, identityId, pagenum, pagesize)
+function BbsPostService:getPostListByUserInfo(personId, identityId,messageType, pagenum, pagesize)
     log.debug("personId:" .. personId)
     if personId == nil or string.len(personId) == 0 then
         error("person_id 不能为空.")
     end
     if identityId == nil or string.len(identityId) == 0 then
         error("identity_id 不能为空.")
+    end
+    if messageType == nil or string.len(messageType) == 0 then
+        error("message_type不能为空.")
     end
     if pagenum == nil or string.len(pagenum) == 0 then
         error("pagenum  不能为空");
@@ -348,8 +353,10 @@ function BbsPostService:getPostListByUserInfo(personId, identityId, pagenum, pag
     end
     local personIdFilter = "filter=person_id," .. personId .. ";"
     local identityIdFilter = "filter=identity_id," .. identityId .. ";"
-    local filter = personIdFilter .. identityIdFilter
-    local res, totalRow, totalPage = getPostSphinxData(filter, pagenum, pagesize);
+    local messageTypeFilter =  "filter=message_type," .. messageType .. ";"
+    local deleteFilter = "filter=b_delete,0;"
+    local filter = personIdFilter .. identityIdFilter..messageTypeFilter..deleteFilter
+    local res, totalRow, totalPage = getPostSphinxData(filter, pagenum, pagesize,"attr_desc:ts;");
     local post = {}
     post.totalRow = totalRow;
     post.totalPage = totalPage;
@@ -361,20 +368,30 @@ function BbsPostService:getPostListByUserInfo(personId, identityId, pagenum, pag
         for i = 1, #res do
             -- local key = "social_bbs_topicid_" .. topicid .. "_postid_" .. res[i]["id"]
             local key = "social_bbs_postid_" .. res[i]["id"]
-            local keys = { "id", "content", "personId", "personName", "createTime", "floor", "identityId", "bDelete" ,"bbsId"}
+            local keys = { "id", "content", "personId", "personName", "createTime", "floor", "identityId", "bDelete" ,"bbsId","topicId","forumId"}
             local _result = db:multi_hget(key, unpack(keys))
-            if _result and #_result > 0 then
+            if _result and #_result > 0 and _result[1]~="ok" then
                 local _post = util:multi_hget(_result, keys)
                 local t = {}
                 t.id = _post.id
-                t.person_id = _post.personId;
-                t.person_name = _post.personName
                 t.create_time = _post.createTime;
                 t.icon_url = getIcon(_post.personId, _post.identityId)
                 t.floor = _post.floor;
                 t.content = _post.content
                 t.b_delete = _post.bDelete;
                 t.bbs_id=_post.bbsId;
+                t.forum_id = _post.forumId
+                local topic_key = "social_bbs_topicid_" .. _post.topicId
+                local topic_keys = {"title","personId","personName","identityId"}
+                local topic_result = db:multi_hget(topic_key, unpack(topic_keys))
+                if topic_result and #topic_result > 0 then
+                    local _topic = util:multi_hget(topic_result, topic_keys)
+                    t.person_id = _topic.personId;
+                    t.person_name = _topic.personName;
+                    t.topic_title =_topic.title;
+                    t.identity_id = _topic.identityId
+                end
+                t.topic_id = _post.topicId;
                 table.insert(post.list, t)
             end
         end

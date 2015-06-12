@@ -54,7 +54,8 @@ local function convertTopic(topic)
         SUPPORT_COUNT = topic.supportCount,
         OPPOSE_COUNT = topic.opposeCount,
         B_DELETE = topic.bDelete,
-        MESSAGE_TYPE= topic.messageType
+        MESSAGE_TYPE = topic.messageType,
+        TYPE_ID = topic.typeId
     }
     log.debug("保存主题帖信息数据Table:");
     log.debug(t)
@@ -101,9 +102,9 @@ function M:saveTopicToSsdb(topic)
     if topic == nil or TableUtil:length(topic) == 0 then
         error("topic is null");
     end
---    if topic.forumId == nil or string.len(topic.forumId) == 0 then
---        error("forum id is null");
---    end
+    --    if topic.forumId == nil or string.len(topic.forumId) == 0 then
+    --        error("forum id is null");
+    --    end
     topic.createTime = os.date("%Y-%m-%d %H:%M:%S")
     local db = SsdbUtil:getDb();
     topic.bDelete = 0;
@@ -111,16 +112,16 @@ function M:saveTopicToSsdb(topic)
     log.debug("保存主题帖的 key:" .. key)
     db:multi_hset(key, topic)
     util:logkeys(key, "multi_hset") --把key记录到日志文件 中.
---    local topicids_t, err = db:hget("social_bbs_forum_include_topic", "forum_id_" .. topic.forumId)
---    util:log_r_keys("social_bbs_forum_include_topic", "hget")
---    local topicids = ""
---    if topicids_t and string.len(topicids_t[1]) > 0 then
---        topicids = topicids_t[1] .. "," .. topic.id
---    else
---        topicids = topic.id
---    end
---    db:hset("social_bbs_forum_include_topic", "forum_id_" .. topic.forumId, topicids)
---    util:logkeys("social_bbs_forum_include_topic", "hset")
+    --    local topicids_t, err = db:hget("social_bbs_forum_include_topic", "forum_id_" .. topic.forumId)
+    --    util:log_r_keys("social_bbs_forum_include_topic", "hget")
+    --    local topicids = ""
+    --    if topicids_t and string.len(topicids_t[1]) > 0 then
+    --        topicids = topicids_t[1] .. "," .. topic.id
+    --    else
+    --        topicids = topic.id
+    --    end
+    --    db:hset("social_bbs_forum_include_topic", "forum_id_" .. topic.forumId, topicids)
+    --    util:logkeys("social_bbs_forum_include_topic", "hset")
 end
 
 --------------------------------------------------------------------------------
@@ -305,7 +306,7 @@ end
 -- @param #string filterDate 筛选时间
 -- @param #string sortType 排序类型.
 -- @result #table  {list=list,totalRow=totalRow,totalPage=totalPage}
-function M:getTopicsFromSsdb(bbsid, forumid, categoryid, searchText, filterDate, sortType, best,messageType, pagenum, pagesize)
+function M:getTopicsFromSsdb(bbsid, forumid, categoryid, searchText, filterDate, sortType, best, messageType, pagenum, pagesize)
     if bbsid == nil or string.len(bbsid) == 0 then
         error("bbs id 不能为空");
     end
@@ -317,7 +318,7 @@ function M:getTopicsFromSsdb(bbsid, forumid, categoryid, searchText, filterDate,
     local sql = "SELECT SQL_NO_CACHE id FROM T_SOCIAL_BBS_TOPIC_SPHINXSE WHERE query=%s;SHOW ENGINE SPHINX  STATUS;"
     local bbsidFilter = "filter=bbs_id," .. bbsid .. ";"
     local forumidFilter = ((forumid == nil or string.len(forumid) == 0) and "") or "filter=forum_id," .. forumid .. ";"
-    messageType=  ((messageType == nil or string.len(messageType) == 0) and "1") or messageType
+    messageType = ((messageType == nil or string.len(messageType) == 0) and "1") or messageType
     local messageTypeFilter = "filter=message_type," .. messageType .. ";"
     local categoryidFilter = ((categoryid == nil or string.len(categoryid) == 0) and "") or "filter=category_id," .. categoryid .. ";"
     local bestFilter = ((best == nil or string.len(best) == 0) and "") or "filter=b_best,1;"
@@ -351,7 +352,7 @@ function M:getTopicsFromSsdb(bbsid, forumid, categoryid, searchText, filterDate,
         sort = sort .. "ts desc;"
     end
     local _filterDate = ((filterDate == nil or string.len(filterDate) == 0 or filterDate == "0") and "") or "select=(IF(ts>" .. beforeDate .. ",1,0) AND IF(ts<" .. currentDate .. ",1,0)) as match_qq;filter=match_qq,1;"
-    queryStr = string.format(queryStr, searchTextFilter, bbsidFilter, forumidFilter, categoryidFilter, bestFilter,messageTypeFilter, _filterDate, sort);
+    queryStr = string.format(queryStr, searchTextFilter, bbsidFilter, forumidFilter, categoryidFilter, bestFilter, messageTypeFilter, _filterDate, sort);
     queryStr = ngx.quote_sql_str(queryStr)
     log.debug("queryStr :" .. queryStr)
     sql = string.format(sql, queryStr)
@@ -558,12 +559,15 @@ end
 -- @param #string pagenum
 -- @param #string pagesize
 -- @return #table
-function M:getTopicListByUserInfo(personId, identityId, pagenum, pagesize)
+function M:getTopicListByUserInfo(personId, identityId,messageType, pagenum, pagesize)
     if personId == nil or string.len(personId) == 0 then
         error("person_id不能为空.")
     end
     if identityId == nil or string.len(identityId) == 0 then
         error("identity_id不能为空.")
+    end
+    if messageType == nil or string.len(messageType) == 0 then
+        error("message_type不能为空.")
     end
     if pagenum == nil or string.len(pagenum) == 0 then
         error("pagenum  不能为空");
@@ -574,13 +578,14 @@ function M:getTopicListByUserInfo(personId, identityId, pagenum, pagesize)
     local offset = pagesize * pagenum - pagesize
     local limit = pagesize
     local str_maxmatches = "10000"
-    local queryStr = "%s%sfilter=b_delete,0;%smaxmatches=" .. str_maxmatches .. ";offset=" .. offset .. ";limit=" .. limit .. ""
+    local queryStr = "%s%s%sfilter=b_delete,0;%smaxmatches=" .. str_maxmatches .. ";offset=" .. offset .. ";limit=" .. limit .. ""
     local sql = "SELECT SQL_NO_CACHE id FROM T_SOCIAL_BBS_TOPIC_SPHINXSE WHERE query=%s;SHOW ENGINE SPHINX  STATUS;"
     local sort = "sort=extended:b_top desc,"
     sort = sort .. "ts desc;"
     local personIdFilter = "filter=person_id," .. personId .. ";"
     local identityIdFilter = "filter=identity_id," .. identityId .. ";"
-    queryStr = string.format(queryStr, personIdFilter, identityIdFilter, sort);
+    local messageTypeFilter =  "filter=message_type," .. messageType .. ";"
+    queryStr = string.format(queryStr, personIdFilter, identityIdFilter,messageTypeFilter, sort);
     queryStr = ngx.quote_sql_str(queryStr)
     log.debug("queryStr :" .. queryStr)
     sql = string.format(sql, queryStr)
@@ -622,6 +627,24 @@ function M:getTopicListByUserInfo(personId, identityId, pagenum, pagesize)
         end
     end
     return topic;
+end
+
+-----------------------------------------------------------------------------------
+-- 通过typeid 与messageType获取topic数据，确定.唯 一
+-- @param #string typeId
+-- @param #string messageType
+function M:getTopicByTypeIdAndType(typeId, messageType)
+    if typeId == nil or string.len(typeId) == 0 then
+        error("type_id不能为空.")
+    end
+    if messageType == nil or string.len(messageType) == 0 then
+        error("message_type不能为空.")
+    end
+    local sql = "SELECT * FROM T_SOCIAL_BBS_TOPIC T WHERE T.MESSAGE_TYPE=%s AND T.TYPE_ID=%"
+    sql = sql:format(typeId, messageType)
+    log.debug("getTopicByTypeIdAndType:sql: " .. sql);
+    local result = DBUtil:querySingleSql(sql);
+    return result;
 end
 
 return BbsTopicService;

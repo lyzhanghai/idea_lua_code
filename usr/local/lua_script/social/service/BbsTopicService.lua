@@ -55,7 +55,7 @@ local function convertTopic(topic)
         OPPOSE_COUNT = topic.opposeCount,
         B_DELETE = topic.bDelete,
         MESSAGE_TYPE = topic.messageType,
-        TYPE_ID = topic.typeId
+        TYPE_ID = ngx.quote_sql_str(topic.typeId)
     }
     log.debug("保存主题帖信息数据Table:");
     log.debug(t)
@@ -640,8 +640,8 @@ function M:getTopicByTypeIdAndType(typeId, messageType)
     if messageType == nil or string.len(messageType) == 0 then
         error("message_type不能为空.")
     end
-    local sql = "SELECT * FROM T_SOCIAL_BBS_TOPIC T WHERE T.MESSAGE_TYPE=%s AND T.TYPE_ID=%s"
-    sql = sql:format(typeId, messageType)
+    local sql = "SELECT * FROM T_SOCIAL_BBS_TOPIC T WHERE T.TYPE_ID=%s AND T.MESSAGE_TYPE=%s"
+    sql = sql:format(ngx.quote_sql_str(typeId), messageType)
     log.debug("getTopicByTypeIdAndType:sql: " .. sql);
     local result = DBUtil:querySingleSql(sql);
     return result;

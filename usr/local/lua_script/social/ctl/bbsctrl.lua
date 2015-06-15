@@ -375,7 +375,7 @@ local function saveMessage()
         topic.personName = personName;
         topic.identityId = identityId;
         topic.messageType = messageType;
-        topic.topicId = typeId;
+        topic.typeId = typeId;
         local topicId = bbsTopicService:getTopicPkId() -- 生成topic主键id.
         topic.id = topicId;
         local status = pcall(function()

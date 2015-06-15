@@ -193,6 +193,7 @@ local function topicView()
     local postService = getService("BbsPostService")
     local topicService = getService("BbsTopicService")
     local messageType = request:getStrParam("message_type", true, true)
+    local sort = request:getStrParam("sort", false, true)
     local topicid;
     if messageType == constant.MESSAGE_TYPE_BBS then --如果是bbs
         topicid = request:getStrParam("topic_id", true, true)
@@ -211,7 +212,7 @@ local function topicView()
     local forumid = request:getStrParam("forum_id", false, true)
     local pageNumber = request:getStrParam("pageNumber", true, true)
     local pageSize = request:getStrParam("pageSize", true, true)
-    local r = postService:getPostsFromDb(bbsid, forumid, topicid, pageNumber, pageSize)
+    local r = postService:getPostsFromDb(bbsid, forumid, topicid, pageNumber, pageSize,sort)
     log.debug(r);
     topicService:updateTopicViewCountToDb(topicid)
     topicService:updateTopicViewCountToSsdb(topicid)

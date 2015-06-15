@@ -188,6 +188,7 @@
 		type:信息类型.
 		pageNumber : 页码
 		pageSize: 每页显示条数.
+		sort:1 如果是1 按时间倒排.可以不传，默认为0按时间正排.
 3返回值：
 	{
 		"success":true

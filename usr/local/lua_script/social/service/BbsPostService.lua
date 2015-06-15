@@ -212,13 +212,13 @@ local function getIcon(personid, identityid)
 end
 
 
-
-local function getPostById(postId)
-    local key = "social_bbs_postid_" .. postId
-    local keys = { "id", "content", "personId", "personName", "createTime", "floor", "identityId", "bDelete" }
-    local _result = db:multi_hget(key, unpack(keys))
-    return _result;
-end
+--
+--local function getPostById(postId)
+--    local key = "social_bbs_postid_" .. postId
+--    local keys = { "id", "content", "personId", "personName", "createTime", "floor", "identityId", "bDelete" }
+--    local _result = db:multi_hget(key, unpack(keys))
+--    return _result;
+--end
 --
 ---------------------------------------------------------------------------------
 -- 分页获取回复帖
@@ -228,7 +228,7 @@ end
 -- @param #string pagenum 页.
 -- @param #string pagesize 每页显示条数.
 -- @result #table  {list=list,totalRow=totalRow,totalPage=totalPage}
-function BbsPostService:getPostsFromDb(bbsid, forumid, topicid, pagenum, pagesize)
+function BbsPostService:getPostsFromDb(bbsid, forumid, topicid, pagenum, pagesize,sort)
 --    if bbsid == nil or string.len(bbsid) == 0 then
 --        error("bbs id 不能为空");
 --    end
@@ -274,7 +274,11 @@ function BbsPostService:getPostsFromDb(bbsid, forumid, topicid, pagenum, pagesiz
         local forumidFilter =((forumid == nil or string.len(forumid) == 0) and "") or "filter=forum_id," .. forumid .. ";"
         local topicidFilter = "filter=topic_id," .. topicid .. ";"
         local filter = bbsidFilter .. forumidFilter .. topicidFilter
-        local res, totalRow, totalPage = getPostSphinxData(filter, pagenum, pagesize,"attr_asc:ts;");
+        local orderStr = "attr_asc:ts;";
+        if sort == "1" then
+            orderStr =  "attr_desc:ts;";
+        end
+        local res, totalRow, totalPage = getPostSphinxData(filter, pagenum, pagesize,orderStr);
         topic.totalRow = totalRow;
         topic.totalPage = totalPage;
         topic.pageNumber = pagenum;

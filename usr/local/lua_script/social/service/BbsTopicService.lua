@@ -26,8 +26,8 @@ local function addTable(t, fieldStr, columns, values)
 end
 
 local function convertTopic(topic)
-
     local create_ts = TS.getTs()
+    local typeid =((topic.typeId ==nil or string.len(topic.typeId)) and "bbs_"..topic.bbsId) or topic.typeId
     local t = {
         ID = topic.id,
         BBS_ID = topic.bbsId,
@@ -55,7 +55,7 @@ local function convertTopic(topic)
         OPPOSE_COUNT = topic.opposeCount,
         B_DELETE = topic.bDelete,
         MESSAGE_TYPE = topic.messageType,
-        TYPE_ID = ngx.quote_sql_str(topic.typeId)
+        TYPE_ID = ngx.quote_sql_str(typeid)
     }
     log.debug("保存主题帖信息数据Table:");
     log.debug(t)

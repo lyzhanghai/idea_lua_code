@@ -195,7 +195,10 @@ local function topicView()
     local messageType = request:getStrParam("message_type", true, true)
     local sort = request:getStrParam("sort", false, true)
     local topicid;
+    log.debug("messageType :"..messageType);
+    log.debug("constant.MESSAGE_TYPE_BBS :"..constant.MESSAGE_TYPE_BBS);
     if messageType == constant.MESSAGE_TYPE_BBS then --如果是bbs
+        log.debug("------------------------------------------------------");
         topicid = request:getStrParam("topic_id", true, true)
     else
         local typeId = request:getStrParam("type_id", true, true)

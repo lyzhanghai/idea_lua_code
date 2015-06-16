@@ -57,6 +57,13 @@ local function topicSave()
     end
     local content = request:getStrParam("content", true, false)
     local personName = request:getStrParam("person_name", true, true)
+    ----此处有可能去掉
+    local forumUser = BbsService:getForumnUserByPersonId(personid, forumid, identityid, bbsid)
+    if not forumUser or #forumUser == 0 then --如果不存在此记录。
+        BbsService:saveForumUser(forumid, personid, identityid, personName, 0)
+    end
+-------------------------------------------------------------------------------------------------
+
     log.debug("personName:" .. personName);
     local rr = {}
     rr.success = false

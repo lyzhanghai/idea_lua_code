@@ -22,6 +22,9 @@ local function saveForumToDb(param)
             table.concat(forum_t, ",") .. ")"
     log.debug("保存板块的sql :" .. isql);
     local queryResult = DBUtil:querySingleSql(isql);
+    if not queryResult then
+        return 0
+    end
     return queryResult.affected_rows
 end
 
@@ -67,7 +70,7 @@ end
 -- sequence=param.sequence,
 -- typeid=param.typeid,
 -- type=param.type
-function _M.saveForum(param)
+function _M:saveForum(param)
     self:checkParamIsNull({
         bbs_id = param.bbs_id,
         partition_id = param.partition_id,
@@ -87,21 +90,25 @@ function _M.saveForum(param)
         saveForumToSSDB(param)
     end
     SsdbUtil:keepalive()
+    return forum_id;
 end
 
 local function updateForumToDb(param)
     local usql = "update t_social_bbs_forum set %s where id = " .. param.forum_id
-    local str="bbs_id="..param.bbs_id..","
-    str = str.."partition_id="..param.partition_id..","
-    str = str.."name="..param.name..","
-    str = str.."icon_url="..param.icon_url..","
-    str = str.."sequence="..param.sequence..","
-    str =  ((param.description==nil or string.len(param.description) == 0) and "") or str.."description="..param.description..","
-    str = str.."type_id="..param.type_id..","
-    str = str.."type="..param.type
-    usql = string.format(usql,str)
+    local str = "bbs_id=" .. param.bbs_id .. ","
+    str = str .. "partition_id=" .. param.partition_id .. ","
+    str = str .. "name=" .. param.name .. ","
+    str = str .. "icon_url=" .. param.icon_url .. ","
+    str = str .. "sequence=" .. param.sequence .. ","
+    str = ((param.description == nil or string.len(param.description) == 0) and "") or str .. "description=" .. param.description .. ","
+    str = str .. "type_id=" .. param.type_id .. ","
+    str = str .. "type=" .. param.type
+    usql = string.format(usql, str)
     log.debug(usql);
     local queryResult = DBUtil:querySingleSql(usql);
+    if not queryResult then
+        return 0
+    end
     return queryResult.affected_rows
 end
 
@@ -114,14 +121,14 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- 修改版块信息.
 -- @param #string .
-function _M.updateForum(param)
+function _M:updateForum(param)
     self:checkParamIsNull({
         bbs_id = param.bbs_id,
         partition_id = param.partition_id,
         name = param.name,
         icon_url = param.icon_url,
-        forum_id= param.forum_id,
-       -- description = param.description,
+        forum_id = param.forum_id,
+        -- description = param.description,
         sequence = param.sequence,
         type_id = param.type_id,
         type = param.type
@@ -137,6 +144,9 @@ end
 local function deleteOrRecoveryForumToDb(forum_id, isDelete)
     local ssql = "update t_social_bbs_forum set b_delete = 1 where id = " .. forum_id
     local queryResult = DBUtil:querySingleSql(ssql);
+    if not queryResult then
+        return 0
+    end
     return queryResult.affected_rows
 end
 
@@ -156,7 +166,7 @@ end
 
 --删除版块信息.
 --@param #string
-function _M.deleteForum(forum_id)
+function _M:deleteForum(forum_id)
     self:checkParamIsNull({
         forum_id = forum_id
     })
@@ -179,10 +189,11 @@ local function recoveryForumToSSDB(forum_id)
         db:hset("social_bbs_include_forum", "partition_id_" .. partition_id, newPids)
     end
 end
+
 ------------------------------------------------------------------------------------------------------------------------
---恢复删除的版块.
---@param #string forum_id.
-function _M.recoveryForum(forum_id)
+-- 恢复删除的版块.
+-- @param #string forum_id.
+function _M:recoveryForum(forum_id)
     self:checkParamIsNull({
         forum_id = forum_id
     })
@@ -195,16 +206,16 @@ end
 
 
 ------------------------------------------------------------------------------------------------------------------------
---通过id获取forum
---从数据库读取.
---@param #string forum_id
---@return table
-function _M.getForumById(forum_id)
+-- 通过id获取forum
+-- 从数据库读取.
+-- @param #string forum_id
+-- @return table
+function _M:getForumById(forum_id)
     self:checkParamIsNull({
         forum_id = forum_id
     })
     local sql = "select id,bbs_id,partition_id,name,icon_url,description,sequence,type,type_id from t_social_bbs_forum where id = %s"
-    sql = string.format(sql,forum_id);
+    sql = string.format(sql, forum_id);
     local queryResult = DBUtil:querySingleSql(sql);
     local rr = {}
     if queryResult and #queryResult > 0 then

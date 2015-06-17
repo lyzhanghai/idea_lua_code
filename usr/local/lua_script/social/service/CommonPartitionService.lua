@@ -18,14 +18,17 @@ local _M = {
 
 --保存数据到mysql
 local function savePartitionToDb(bbs_id, name, sequence, partition_id, type_id, type)
-    local sqlvalue = { bbs_id, quote(name), sequence, partition_id, quote(type_id), quote(type) }
+    local sqlvalue = { partition_id,bbs_id, quote(name), sequence , quote(type_id), quote(type) }
     local isql = "insert into t_social_bbs_partition(id,bbs_id,name,sequence,type_id,type) values(" ..
             table.concat(sqlvalue, ",") .. ")"
     local db = DBUtil:getDb();
     log.debug("添加分区sql:" .. isql)
     local queryResult = db:query(isql);
-    local rows = queryResult.affected_rows;
     DBUtil:keepDbAlive(db);
+    if not queryResult then
+       return 0
+    end
+    local rows = queryResult.affected_rows;
     return rows --影响行数.
 end
 
@@ -43,7 +46,7 @@ local function savePartitionToSSDB(bbs_id, name, sequence, partition_id, type_id
     db:multi_hset("social_bbs_partition_" .. partition_id, partition)
     local pids_t, err = db:hget("social_bbs_include_partition", "bbs_id_" .. bbs_id)
     local pids = ""
-    if pids_t and len(pids_t[1]) > 0 then
+    if pids_t and string.len(pids_t[1]) > 0 then
         pids = pids_t[1] .. "," .. partition_id
     else
         pids = partition_id
@@ -54,7 +57,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- 保存分区信息.
 -- @param #string .
-function _M.savePartition(bbs_id, name, sequence, type_id, type)
+function _M:savePartition(bbs_id, name, sequence, type_id, type)
     self:checkParamIsNull({
         bbs_id = bbs_id,
         name = name,
@@ -70,6 +73,7 @@ function _M.savePartition(bbs_id, name, sequence, type_id, type)
         savePartitionToSSDB(bbs_id, name, sequence, partition_id, type_id, type)
     end
     SsdbUtil:keepalive()
+    return partition_id;
 end
 
 
@@ -94,7 +98,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- 修改分区信息.
 -- @param #string .
-function _M.updatePartiton(name, partition_id)
+function _M:updatePartiton(name, partition_id)
     self:checkParamIsNull({
         name = name,
         partition_id = partition_id
@@ -117,7 +121,7 @@ local function deletePartitionToSSDB(partition_id)
     db:hset("social_bbs_partition_" .. partition_id, "b_delete", 1)
     local bbs_id, err = db:hget("social_bbs_partition_" .. partition_id, "bbs_id")[1]
     local pids, err = db:hget("social_bbs_include_partition", "bbs_id_" .. bbs_id)[1]
-    if pids and len(pids) > 0 then
+    if pids and string.len(pids) > 0 then
         pids = string.gsub(pids, partition_id .. ",", "")
         pids = string.gsub(pids, "," .. partition_id, "")
         pids = string.gsub(pids, partition_id, "")
@@ -129,7 +133,7 @@ end
 --
 -- 删除分区信息.
 -- @param #string partition_id
-function _M.deletePartition(partition_id)
+function _M:deletePartition(partition_id)
     self:checkParamIsNull({
         partition_id = partition_id
     })
@@ -145,7 +149,7 @@ local function recoveryPartitionToSSDB(partition_id)
     db:hset("social_bbs_partition_" .. partition_id, "b_delete", 0)
     local bbs_id, err = db:hget("social_bbs_partition_" .. partition_id, "bbs_id")[1]
     local pids, err = db:hget("social_bbs_include_partition", "bbs_id_" .. bbs_id)[1]
-    if pids and len(pids) > 0 then
+    if pids and string.len(pids) > 0 then
         local _pids = Split(pids, ",")
         table.insert(_pids,partition_id);
         local newPids = table.concat(_pids,",");
@@ -155,7 +159,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 ---恢复删除.
 -- @param #string partition_id
-function _M.recoveryPartition(partition_id)
+function _M:recoveryPartition(partition_id)
     self:checkParamIsNull({
         partition_id = partition_id
     })
@@ -169,7 +173,7 @@ end
 
 ------------------------------------------------------------------------------------------------------------------------
 --通过partition_id获取分区
-function _M.getPartitionById(partition_id)
+function _M:getPartitionById(partition_id)
     self:checkParamIsNull({
         partition_id = partition_id
     })

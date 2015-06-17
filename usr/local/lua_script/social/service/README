@@ -15,7 +15,7 @@ local bbsService = require("social.service.BbsService")
          sequence  排序
          type_id   类型id.
          type      类型 1 bbs,2 留言,3 区域均衡
-  返回值:无
+  返回值:主键id
   异常 :出错
 2.区域修改
     函数 : updatePartition
@@ -59,7 +59,7 @@ local bbsService = require("social.service.BbsService")
                   type_id = param.type_id, --类型id.
                   type = param.type  --类型1 bbs,2 留言,3 区域均衡
          }
-    返回值:无
+    返回值:主键id
     异常 :出错
 7.版块修改
     函数 :updateForum

@@ -27,7 +27,7 @@ end
 
 local function convertTopic(topic)
     local create_ts = TS.getTs()
-    local typeid =((topic.typeId ==nil or string.len(topic.typeId)) and "bbs_"..topic.bbsId) or topic.typeId
+    local typeid =((topic.typeId ==nil or string.len(topic.typeId)==0) and "bbs_"..topic.bbsId) or topic.typeId
     local t = {
         ID = topic.id,
         BBS_ID = topic.bbsId,

@@ -266,9 +266,9 @@ function BbsService:getBbsById(bbsid)
     local keys = { "id", "total_today", "total_yestoday", "total", "name", "logo_url", "icon_url", "domain", "region_id", "region_type" }
     local bbsResult = db:multi_hget("social_bbs_" .. bbsid, unpack(keys))
     util:log_r_keys("social_bbs_" .. bbsid, "multi_hget")
-    for _, var in pairs(bbsResult) do
-        log.debug(var)
-    end
+--    for _, var in pairs(bbsResult) do
+--        log.debug(var)
+--    end
     local bbs = {}
     if bbsResult and #bbsResult > 0 then
         bbs = util:multi_hget(bbsResult, keys) --工具实现对multi_hget解析
@@ -283,6 +283,8 @@ function BbsService:getBbsById(bbsid)
     local SOCIAL_BBS_INCLUDE_PARTITION = "social_bbs_include_partition";
     local partitionResult = db:hget(SOCIAL_BBS_INCLUDE_PARTITION, "bbs_id_" .. bbsid)
     util:log_r_keys(SOCIAL_BBS_INCLUDE_PARTITION, "hget")
+    log.debug("getBbsById :")
+    log.debug(partitionResult)
     if partitionResult and string.len(partitionResult[1]) > 0 then
         local pidstr = partitionResult[1]
         --util:logData("pids 集合:" .. pidstr);

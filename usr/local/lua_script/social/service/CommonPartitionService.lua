@@ -45,12 +45,14 @@ local function savePartitionToSSDB(bbs_id, name, sequence, partition_id, type_id
     partition.type = type;
     db:multi_hset("social_bbs_partition_" .. partition_id, partition)
     local pids_t, err = db:hget("social_bbs_include_partition", "bbs_id_" .. bbs_id)
+
     local pids = ""
     if pids_t and string.len(pids_t[1]) > 0 then
         pids = pids_t[1] .. "," .. partition_id
     else
         pids = partition_id
     end
+    log.debug(pids)
     db:hset("social_bbs_include_partition", "bbs_id_" .. bbs_id, pids)
 end
 
@@ -69,6 +71,8 @@ function _M:savePartition(bbs_id, name, sequence, type_id, type)
     local partition_id = db:incr("social_bbs_partition_pk")[1]
 
     local affected_rows = savePartitionToDb(bbs_id, name, sequence, partition_id, type_id, type)
+    log.debug("保存分区，返回行数")
+    log.debug(affected_rows)
     if affected_rows > 0 then
         savePartitionToSSDB(bbs_id, name, sequence, partition_id, type_id, type)
     end
@@ -78,18 +82,21 @@ end
 
 
 --- -
-local function updatePartitonToDb(name, partition_id)
+local function updatePartitionToDb(name, partition_id)
     local db = DBUtil:getDb();
     local usql = "update t_social_bbs_partition set name = " .. quote(name) .. " where id = " .. partition_id
     log.debug("修改分区信息sql:" .. usql);
     local uresutl, err = db:query(usql)
+    DBUtil:keepDbAlive(db);
+    if not uresutl then
+        return 0
+    end
     local rows = uresutl.affected_rows;
     log.debug("响应行数." .. rows);
-    DBUtil:keepDbAlive(db);
     return rows; --影响行数.
 end
 
-local function updatePartitonToSSDB(name, partition_id)
+local function updatePartitionToSSDB(name, partition_id)
     local db = SsdbUtil:getDb();
     db:hset("social_bbs_partition_" .. partition_id, "name", name)
     SsdbUtil:keepalive()
@@ -98,14 +105,14 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 -- 修改分区信息.
 -- @param #string .
-function _M:updatePartiton(name, partition_id)
+function _M:updatePartition(name, partition_id)
     self:checkParamIsNull({
         name = name,
         partition_id = partition_id
     })
-    local rows = updatePartitonToDb(name, partition_id)
+    local rows = updatePartitionToDb(name, partition_id)
     if rows > 0 then
-        updatePartitonToSSDB(name, partition_id)
+        updatePartitionToSSDB(name, partition_id)
     end
 end
 
@@ -113,6 +120,9 @@ local function deleteORRecoveryPartitionToDb(partition_id,isDelete)
     local sql = "update t_social_bbs_partition set b_delete = "..isDelete.." where id = " .. partition_id
     log.debug("删除分区sql:" .. sql);
     local queryResult = DBUtil:querySingleSql(sql);
+    if not queryResult then
+        return 0
+    end
     return queryResult.affected_rows
 end
 

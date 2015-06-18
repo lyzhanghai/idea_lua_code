@@ -79,6 +79,12 @@ local bbsService = require("social.service.BbsService")
                       sequence = param.sequence, -- 排序.
                       type_id = param.type_id, --类型id.
                       type = param.type  --类型1 bbs,2 留言,3 区域均衡
+                      forum_admin_list = 类型table
+                                          [{
+                                        		person_id=用户id
+                                        		person_name=用户名称
+                                        		identity_id=身份id
+                                        	},{}]
              }
     返回值:无
     异常 :出错

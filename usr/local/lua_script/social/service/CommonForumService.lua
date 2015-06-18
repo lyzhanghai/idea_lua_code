@@ -121,7 +121,9 @@ local function updateForumToDb(param)
         DBUtil:keepDbAlive(db)
         return 0
     end
-
+    --删除版主.
+    local usql2 = "update t_social_bbs_forum_user set flag = 0 where forum_id = "..param.forum_id.." and flag = 1"
+    db:query(usql2);
     for i=1, #param.forum_admin_list do
         local forum_admin = param.forum_admin_list[i]
         local sql11 = "select * from t_social_bbs_forum_user where forum_id = "..param.forum_id.." and person_id = "..forum_admin.person_id.." and identity_id = "..forum_admin.identity_id
@@ -130,7 +132,7 @@ local function updateForumToDb(param)
             local sql22 = "update t_social_bbs_forum_user set flag = 1 where forum_id = "..param.forum_id.." and person_id = "..forum_admin.person_id.." and identity_id = "..forum_admin.identity_id
             db:query(sql22)
         else
-            local sql33 = "insert into t_social_bbs_forum_user(forum_id,person_id,identity_id,person_name,flag)values("..param.forum_id..","..forum_admin.person_id..","..forum_admin.identity_id..","..quote(forum_admin.person_name)..",1)"
+            local sql33 = "insert into t_social_bbs_forum_user(forum_id,person_id,identity_id,person_name,flag) values ("..param.forum_id..","..forum_admin.person_id..","..forum_admin.identity_id..","..quote(forum_admin.person_name)..",1)"
             db:query(sql33)
         end
     end

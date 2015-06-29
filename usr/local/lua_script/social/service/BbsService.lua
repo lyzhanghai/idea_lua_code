@@ -121,7 +121,7 @@ function BbsService:getForumByIdFromSsdb(fourmid)
     if fourmid == nil or string.len(fourmid) == 0 then
         error("fourmid 不能为空.")
     end
-    local keys = { "id", "name", "icon_url", "last_post_time", "total_topic", "total_topic_post", "description","forum_admin_list" }
+    local keys = { "id", "name", "icon_url", "last_post_time", "total_topic", "total_topic_post", "description", "forum_admin_list" }
     local db = SsdbUtil:getDb();
     local fourm = db:multi_hget("social_bbs_forum_" .. fourmid, unpack(keys))
     util:log_r_keys("social_bbs_forum_" .. fourmid, "multi_hget")
@@ -133,17 +133,17 @@ function BbsService:getForumByIdFromSsdb(fourmid)
 end
 
 ----------------------------------------------------------------------------------
------获取版主信息.
-----@param #string forumid
---function BbsService:getForumAdminList(forumid)
---    local db = SsdbUtil:getDb();
---    local forumAdminStrA = db:hget("social_bbs_forum_"..forumid,"forum_admin_list")
---    local forumAdminList = "";
---    if forumAdminStrA and forumAdminStrA[1] and string.len(forumAdminStrA[1]) > 0 then
---        forumAdminList = tostring(forumAdminStrA[1]);
---    end
---    return forumAdminList;
---end
+----- 获取版主信息.
+---- @param #string forumid
+-- function BbsService:getForumAdminList(forumid)
+-- local db = SsdbUtil:getDb();
+-- local forumAdminStrA = db:hget("social_bbs_forum_"..forumid,"forum_admin_list")
+-- local forumAdminList = "";
+-- if forumAdminStrA and forumAdminStrA[1] and string.len(forumAdminStrA[1]) > 0 then
+-- forumAdminList = tostring(forumAdminStrA[1]);
+-- end
+-- return forumAdminList;
+-- end
 
 
 --------------------------------------------------------------------------------
@@ -266,9 +266,9 @@ function BbsService:getBbsById(bbsid)
     local keys = { "id", "total_today", "total_yestoday", "total", "name", "logo_url", "icon_url", "domain", "region_id", "region_type" }
     local bbsResult = db:multi_hget("social_bbs_" .. bbsid, unpack(keys))
     util:log_r_keys("social_bbs_" .. bbsid, "multi_hget")
---    for _, var in pairs(bbsResult) do
---        log.debug(var)
---    end
+    --    for _, var in pairs(bbsResult) do
+    --        log.debug(var)
+    --    end
     local bbs = {}
     if bbsResult and #bbsResult > 0 then
         bbs = util:multi_hget(bbsResult, keys) --工具实现对multi_hget解析
@@ -331,6 +331,48 @@ function BbsService:getBbsById(bbsid)
     return bbs;
 end
 
+------------------------------------------------------------------------------
+-- 通过bbsid获取所有版块id(通过ssdb获取,未删除的)
+-- @param #string bbsid
+-- @return #table bbs信息首页.
+function BbsService:getForumIdsById(bbsid)
+    log.debug("getBbsById bbsid =" .. bbsid)
+    if bbsid == nil or string.len(bbsid) == 0 then
+        error("bbs id 不能为空.")
+    end
+    local forumIds = {}
+    local db = SsdbUtil:getDb()
+    local SOCIAL_BBS_INCLUDE_PARTITION = "social_bbs_include_partition";
+    local partitionResult = db:hget(SOCIAL_BBS_INCLUDE_PARTITION, "bbs_id_" .. bbsid)
+    if partitionResult and string.len(partitionResult[1]) > 0 then
+        local pidstr = partitionResult[1]
+        local pids = Split(pidstr, ",")
+        for _, pid in ipairs(pids) do
+            if string.len(pid) > 0 then
+                local partition = db:multi_hget("social_bbs_partition_" .. pid, "id")
+                local _partition = {}
+                if partition and #partition > 0 then
+                    _partition.id = partition[2];
+                    local SOCIAL_BBS_INCLUDE_FORUM = "social_bbs_include_forum";
+                    local forumResult = db:hget(SOCIAL_BBS_INCLUDE_FORUM, "partition_id_" .. partition[2])
+                    if forumResult and string.len(forumResult[1]) > 0 then
+                        local fidstr = forumResult[1]
+                        local fids = Split(fidstr, ",")
+                        log.debug("=============fids 集合:");
+                        log.debug(fids);
+                        for _, fid in ipairs(fids) do
+                            if string.len(fid) > 0 then
+                                table.insert(forumIds, fid)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return forumIds;
+end
+
 ------------------------------------------------------------------------------------------
 -- 通过区哉id获取bbs信息.
 -- @param #string bbsid
@@ -368,7 +410,7 @@ local function getSchollList(queryResult)
                 if bbsResult and #bbsResult > 0 then
                     local bbs = util:multi_hget(bbsResult, keys) --工具实现对multi_hget解析
                     local totalService = require("social.service.BbsTotalService")
-                    resTempSchoolResult.total =  totalService:getHistoryPostTotal(rbbsid[1]);
+                    resTempSchoolResult.total = totalService:getHistoryPostTotal(rbbsid[1]);
                     resTempSchoolResult.total_topic = totalService:getTopicTotalNumber(rbbsid[1]);
                     resTempSchoolResult.logo_url = bbs.logo_url;
                     resTempSchoolResult.isopen = true
@@ -415,7 +457,7 @@ local function getOrgInfoList(regionId, orgType)
                 if bbsResult and #bbsResult > 0 then
                     local bbs = util:multi_hget(bbsResult, keys) --工具实现对multi_hget解析
                     local totalService = require("social.service.BbsTotalService")
-                    result.total =  totalService:getHistoryPostTotal(rbbsid[1]);
+                    result.total = totalService:getHistoryPostTotal(rbbsid[1]);
                     result.total_topic = totalService.getTopicTotalNumber(rbbsid[1]);
                     result.logo_url = bbs.logo_url;
                     result.isopen = true

@@ -27,12 +27,12 @@ local function saveForumToDb(param)
     if not queryResult then
         return 0
     end
-    for i=1, #param.forum_admin_list do
+    for i = 1, #param.forum_admin_list do
         local forum_admin = param.forum_admin_list[i]
-        local person_id =  forum_admin.person_id
-        local identity_id =  forum_admin.identity_id
+        local person_id = forum_admin.person_id
+        local identity_id = forum_admin.identity_id
         local person_name = quote(forum_admin.person_name)
-        local sql33 = "insert into t_social_bbs_forum_user(forum_id,person_id,identity_id,person_name,flag)values("..param.forum_id..","..person_id..","..identity_id..","..person_name..",1)"
+        local sql33 = "insert into t_social_bbs_forum_user(forum_id,person_id,identity_id,person_name,flag)values(" .. param.forum_id .. "," .. person_id .. "," .. identity_id .. "," .. person_name .. ",1)"
         db:query(sql33);
     end
     return queryResult.affected_rows
@@ -116,23 +116,23 @@ local function updateForumToDb(param)
     str = str .. "type=" .. param.type
     usql = string.format(usql, str)
     log.debug(usql);
-    local queryResult =db:query(usql);
+    local queryResult = db:query(usql);
     if not queryResult then
         DBUtil:keepDbAlive(db)
         return 0
     end
     --删除版主.
-    local usql2 = "update t_social_bbs_forum_user set flag = 0 where forum_id = "..param.forum_id.." and flag = 1"
+    local usql2 = "update t_social_bbs_forum_user set flag = 0 where forum_id = " .. param.forum_id .. " and flag = 1"
     db:query(usql2);
-    for i=1, #param.forum_admin_list do
+    for i = 1, #param.forum_admin_list do
         local forum_admin = param.forum_admin_list[i]
-        local sql11 = "select * from t_social_bbs_forum_user where forum_id = "..param.forum_id.." and person_id = "..forum_admin.person_id.." and identity_id = "..forum_admin.identity_id
+        local sql11 = "select * from t_social_bbs_forum_user where forum_id = " .. param.forum_id .. " and person_id = " .. forum_admin.person_id .. " and identity_id = " .. forum_admin.identity_id
         local result11, err = db:query(sql11)
         if result11 and #result11 > 0 then
-            local sql22 = "update t_social_bbs_forum_user set flag = 1 where forum_id = "..param.forum_id.." and person_id = "..forum_admin.person_id.." and identity_id = "..forum_admin.identity_id
+            local sql22 = "update t_social_bbs_forum_user set flag = 1 where forum_id = " .. param.forum_id .. " and person_id = " .. forum_admin.person_id .. " and identity_id = " .. forum_admin.identity_id
             db:query(sql22)
         else
-            local sql33 = "insert into t_social_bbs_forum_user(forum_id,person_id,identity_id,person_name,flag) values ("..param.forum_id..","..forum_admin.person_id..","..forum_admin.identity_id..","..quote(forum_admin.person_name)..",1)"
+            local sql33 = "insert into t_social_bbs_forum_user(forum_id,person_id,identity_id,person_name,flag) values (" .. param.forum_id .. "," .. forum_admin.person_id .. "," .. forum_admin.identity_id .. "," .. quote(forum_admin.person_name) .. ",1)"
             db:query(sql33)
         end
     end
@@ -142,7 +142,11 @@ end
 
 local function updateForumToSSDB(param)
     local db = SsdbUtil:getDb();
-    db:multi_hset("social_bbs_forum_" .. param.forum_id, "name", param.name, "icon_url", param.icon_url, "description", param.description, "sequence", param.sequence, "forum_admin_list", "", "type", param.type, "type_id", param.type_id)
+    local forum_admin_list;
+    if param.forum_admin_list ~= nil then
+        forum_admin_list = cjson.encode(param.forum_admin_list)
+    end
+    db:multi_hset("social_bbs_forum_" .. param.forum_id, "name", param.name, "icon_url", param.icon_url, "description", param.description, "sequence", param.sequence, "forum_admin_list", forum_admin_list, "type", param.type, "type_id", param.type_id)
     SsdbUtil:keepalive()
 end
 
@@ -170,7 +174,7 @@ end
 
 ------------------------------------------------------------------------------------------------------------------------
 local function deleteOrRecoveryForumToDb(forum_id, isDelete)
-    local ssql = "update t_social_bbs_forum set b_delete = 1 where id = " .. forum_id
+    local ssql = "update t_social_bbs_forum set b_delete = "..isDelete.." where id = " .. forum_id
     local queryResult = DBUtil:querySingleSql(ssql);
     if not queryResult then
         return 0
@@ -202,7 +206,6 @@ function _M:deleteForum(forum_id)
     if row > 0 then
         deleteForumToSSDB(forum_id)
     end
-
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -249,11 +252,11 @@ function _M:getForumById(forum_id)
     sql = string.format(sql, forum_id);
     local queryResult = db:query(sql);
 
-    local ssql2 = "select forum_id,person_id,identity_id,person_name from t_social_bbs_forum_user where forum_id = "..forum_id.." and flag = 1"
+    local ssql2 = "select forum_id,person_id,identity_id,person_name from t_social_bbs_forum_user where forum_id = " .. forum_id .. " and flag = 1"
     local sresult2, err = db:query(ssql2)
     local forum_admin_list = {}
     if sresult2 and #sresult2 > 0 then
-        for i=1, #sresult2 do
+        for i = 1, #sresult2 do
             forum_admin_list[#forum_admin_list + 1] = sresult2[i]
         end
     end

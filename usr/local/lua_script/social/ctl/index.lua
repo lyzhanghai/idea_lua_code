@@ -166,7 +166,14 @@ local function topicSearchList()
     searchText = ngx.decode_base64(searchText)
     log.debug("searchText 搜所内容base64解码后:")
     log.debug(searchText)
-    local result = service:getTopicsFromSsdb(bbsid, nil, nil, searchText, nil, nil, nil, messageType, pageNumber, pageSize)
+
+    local bbsService = getService("BbsService")
+    local forumIds = bbsService:getForumIdsById(bbsid);--获取未删除的forum的id.
+    local forumIdsStr = table.concat(forumIds,",")
+
+    log.debug("没有删除的forumid "..forumIdsStr);
+
+    local result = service:getTopicsFromSsdb(bbsid, forumIdsStr, nil, searchText, nil, nil, nil, messageType, pageNumber, pageSize)
     if result then
         cjson.encode_empty_table_as_object(false)
         result.success = true;

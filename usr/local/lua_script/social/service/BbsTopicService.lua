@@ -310,7 +310,8 @@ function M:getTopicsFromSsdb(bbsid, forumid, categoryid, searchText, filterDate,
     if bbsid == nil or string.len(bbsid) == 0 then
         error("bbs id 不能为空");
     end
-
+    local bbsService = require("social.service.BbsService")
+    local bbsTotalService = require("social.service.BbsTotalService")
     local offset = pagesize * pagenum - pagesize
     local limit = pagesize
     local str_maxmatches = "10000"
@@ -351,6 +352,9 @@ function M:getTopicsFromSsdb(bbsid, forumid, categoryid, searchText, filterDate,
     else
         sort = sort .. "ts desc;"
     end
+
+
+
     local _filterDate = ((filterDate == nil or string.len(filterDate) == 0 or filterDate == "0") and "") or "select=(IF(ts>" .. beforeDate .. ",1,0) AND IF(ts<" .. currentDate .. ",1,0)) as match_qq;filter=match_qq,1;"
     queryStr = string.format(queryStr, searchTextFilter, bbsidFilter, forumidFilter, categoryidFilter, bestFilter, messageTypeFilter, _filterDate, sort);
     queryStr = ngx.quote_sql_str(queryStr)
@@ -374,10 +378,10 @@ function M:getTopicsFromSsdb(bbsid, forumid, categoryid, searchText, filterDate,
     topic.pageSize = pagesize
     topic.bbs = bbsid;
     if forumid ~= nil and string.len(forumid) > 0 then
-        local bbsTotalService = require("social.service.BbsTotalService")
+
         topic.total_today = bbsTotalService:getForumTopicCurrentDateNumber(bbsid, forumid);
         topic.total_topic = bbsTotalService:getForumTopicHistoryNumber(bbsid, forumid);
-        local bbsService = require("social.service.BbsService")
+
         local forum = bbsService:getForumByIdFromSsdb(forumid)
         topic.forum_name = (forum.name == nil and "") or forum.name
         topic.forum_description = (forum.description == nil and "") or forum.description

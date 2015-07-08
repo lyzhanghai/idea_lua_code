@@ -2,6 +2,7 @@
 local cjson = require "cjson"
 local ssdbutil = require("social.common.ssdbutil")
 local redisutil = require("social.common.redisutil")
+local log = require("social.common.log")
 local _M = { debug = nil }
 
 local Application = {}
@@ -24,6 +25,7 @@ function Application:run()
     for i = 1, #self.urls, 2 do
         local pattern = self.urls[i]
         local view = self.urls[i + 1]
+        log.debug( self.urls)
         -- regex mather in compile mode
         local match = ngx.re.match(ngx.var.uri, pattern, "")
         if match then

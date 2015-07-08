@@ -150,7 +150,7 @@ function _M.get(param)
             result.is_attention = 0;
         end
     end
-    local access_quantity = db:get("space_attention_access_quantity" .. param.b_identityid .. "_personid_" .. param.b_personid)
+    local access_quantity = db:get("space_attention_access_quantity_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid)
     if access_quantity and access_quantity[1] and string.len(access_quantity[1]) > 0 then
         result.access_quantity = access_quantity[1]
     else
@@ -159,12 +159,22 @@ function _M.get(param)
     return result;
 end
 
-function _M.access(b_personid, b_identityid)
+function _M.access(personid,identityid,b_personid, b_identityid)
     local db = SsdbUtil:getDb();
-    local result = db:incr("space_attention_access_quantity" .. b_identityid .. "_personid_" .. b_personid, 1);
+    if not personid and not identityid then
+        local key = identityid .. "_" .. personid
+        db:zset("space_attention_access_identityid_" .. b_identityid .. "_personid_" .. b_personid, key, TS.getTs())
+    end
+    local result = db:incr("space_attention_access_quantity_identityid_" .. b_identityid .. "_personid_" .. b_personid, 1);
     return result;
 end
 
+function _M.accesslist(personid,identityid)
+    local db = SsdbUtil:getDb();
+    local zResult = db:zrange("space_attention_access_identityid_" .. identityid .. "_personid_" .. personid, 0, 10)
+    local result = getPersonInfoByRedis(zResult)
+    return result;
+end
 
 function _M.delete(param)
     checkParamIsNull(param)

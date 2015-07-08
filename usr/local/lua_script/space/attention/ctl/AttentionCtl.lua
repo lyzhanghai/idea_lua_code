@@ -87,14 +87,29 @@ end
 ------------------------------------------------------------------------------------------------------
 -- 设置访问量.
 local function access()
+    local personid = request:getStrParam("personid", false, true) --关注人id
+    local identityid = request:getStrParam("identityid", false, true) --关注人id
     local b_personid = request:getStrParam("b_personid", true, true) --被关注人id
     local b_identityid = request:getStrParam("b_identityid", true, true) --被关注人的身份.
-    local result = service.access(b_personid, b_identityid)
+    local result = service.access(personid, identityid, b_personid, b_identityid)
     if not result then
         ngx.say(cjson.encode({ success = false }))
         return;
     end
     ngx.say(cjson.encode({ success = true }))
+end
+
+local function accesslist()
+    local personid = request:getStrParam("personid", true, true) --关注人id
+    local identityid = request:getStrParam("identityid", true, true) --关注人id
+    local list = service.accesslist(personid, identityid)
+    local result = { success = true, list = {} }
+    if not list then
+        ngx.say(cjson.encode({ success = false }))
+        return;
+    end
+    result.list = list
+    ngx.say(cjson.encode(result));
 end
 
 
@@ -122,6 +137,7 @@ local urls = {
     context .. '/bquery', bquery,
     no_permission_context .. '/get', get,
     no_permission_context .. '/access', access,
+    context .. '/list_access', accesslist,
     context .. '/cancel', delete
 }
 local app = web.application(urls, nil)

@@ -5,6 +5,8 @@
 =====================================================
 地址：/dsideal_yy/space/attention/access        get方式.
 参数：
+personid           personid
+identityid         身份id
 b_personid 访问空间的personid
 b_identityid 访问空间的身份id.
 返回值：
@@ -114,4 +116,24 @@ b_identityid       被关注人的身份id.
 {
     success = false,
     info = {name = "",data=""}
+}
+
+============================================================
+7.获取访客记录列表
+地址：/dsideal_yy/ypt/space/attention/list_access        get方式.
+参数：
+personid           personid
+identityid         身份id
+返回值：
+成功
+{
+  	"success":true,
+  	list = [
+            {
+                personid = personid;
+                identityid = 身份id
+                person_name = 姓名;
+                avatar_url = 头像;
+            },{}
+        ]
 }

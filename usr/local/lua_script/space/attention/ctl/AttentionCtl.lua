@@ -73,9 +73,10 @@ end
 local function get()
     local personid = request:getStrParam("personid", false, true) --关注人id
     local identityid = request:getStrParam("identityid", false, true) --关注人id
+    local type = request:getStrParam("type", true, true) --访问的类型（博文，空间）
     local b_personid = request:getStrParam("b_personid", true, true) --被关注人id
     local b_identityid = request:getStrParam("b_identityid", true, true) --被关注人的身份.
-    local result = service.get({ personid = personid, identityid = identityid, b_personid = b_personid, b_identityid = b_identityid })
+    local result = service.get({ personid = personid, identityid = identityid, b_personid = b_personid, b_identityid = b_identityid ,type= type})
     if not result then
         result.success = false
         ngx.say(cjson.encode(result))
@@ -88,10 +89,11 @@ end
 -- 设置访问量.
 local function access()
     local personid = request:getStrParam("personid", false, true) --关注人id
+    local type = request:getStrParam("type", true, true) --访问的类型（博文，空间）
     local identityid = request:getStrParam("identityid", false, true) --关注人id
     local b_personid = request:getStrParam("b_personid", true, true) --被关注人id
     local b_identityid = request:getStrParam("b_identityid", true, true) --被关注人的身份.
-    local result = service.access(personid, identityid, b_personid, b_identityid)
+    local result = service.access(personid, identityid, b_personid, b_identityid, type)
     if not result then
         ngx.say(cjson.encode({ success = false }))
         return;
@@ -102,7 +104,8 @@ end
 local function accesslist()
     local personid = request:getStrParam("personid", true, true) --关注人id
     local identityid = request:getStrParam("identityid", true, true) --关注人id
-    local list = service.accesslist(personid, identityid)
+    local type = request:getStrParam("type", true, true) --访问的类型（博文，空间）
+    local list = service.accesslist(personid, identityid, type)
     local result = { success = true, list = {} }
     if not list then
         ngx.say(cjson.encode({ success = false }))

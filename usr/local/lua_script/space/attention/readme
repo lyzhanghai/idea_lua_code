@@ -9,6 +9,7 @@ personid           personid
 identityid         身份id
 b_personid 访问空间的personid
 b_identityid 访问空间的身份id.
+type
 返回值：
 成功
 {
@@ -23,6 +24,7 @@ personid           personid
 identityid         身份id
 b_personid         被关注人的id
 b_identityid       被关注人的身份id.
+type
 
 返回值:
 {
@@ -124,6 +126,7 @@ b_identityid       被关注人的身份id.
 参数：
 personid           personid
 identityid         身份id
+type
 返回值：
 成功
 {

@@ -144,13 +144,13 @@ function _M.get(param)
         end
         local is_attention = db:zexists("space_attention_identityid_" .. param.identityid .. "_personid_" .. param.personid, param.b_identityid .. "_" .. param.b_personid)
         log.debug(is_attention)
-        if is_attention and is_attention[1] and tonumber(is_attention[1])>0 then
+        if is_attention and is_attention[1] and tonumber(is_attention[1]) > 0 then
             result.is_attention = 1;
         else
             result.is_attention = 0;
         end
     end
-    local access_quantity = db:get("space_attention_access_quantity_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid)
+    local access_quantity = db:get("space_attention_access_" .. param.type .. "_quantity_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid)
     if access_quantity and access_quantity[1] and string.len(access_quantity[1]) > 0 then
         result.access_quantity = access_quantity[1]
     else
@@ -159,19 +159,19 @@ function _M.get(param)
     return result;
 end
 
-function _M.access(personid,identityid,b_personid, b_identityid)
+function _M.access(personid, identityid, b_personid, b_identityid, type)
     local db = SsdbUtil:getDb();
     if not personid and not identityid then
         local key = identityid .. "_" .. personid
-        db:zset("space_attention_access_identityid_" .. b_identityid .. "_personid_" .. b_personid, key, TS.getTs())
+        db:zset("space_attention_access_" .. type .. "_identityid_" .. b_identityid .. "_personid_" .. b_personid, key, TS.getTs())
     end
-    local result = db:incr("space_attention_access_quantity_identityid_" .. b_identityid .. "_personid_" .. b_personid, 1);
+    local result = db:incr("space_attention_access_" .. type .. "_quantity_identityid_" .. b_identityid .. "_personid_" .. b_personid, 1);
     return result;
 end
 
-function _M.accesslist(personid,identityid)
+function _M.accesslist(personid, identityid, type)
     local db = SsdbUtil:getDb();
-    local zResult = db:zrange("space_attention_access_identityid_" .. identityid .. "_personid_" .. personid, 0, 10)
+    local zResult = db:zrange("space_attention_access_" .. type .. "_identityid_" .. identityid .. "_personid_" .. personid, 0, 10)
     local result = getPersonInfoByRedis(zResult)
     return result;
 end

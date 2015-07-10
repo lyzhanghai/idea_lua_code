@@ -35,7 +35,7 @@ type
 }
 ========================================================
  3.获取关注列表.
- 地址:/dsideal_yy/ypt/space/attention/query
+ 地址:/dsideal_yy/space/attention/query
  参数:
  personid           personid
  identityid         身份id
@@ -59,7 +59,7 @@ type
  }
 ========================================================
 4.获取被关注列表.
-地址:/dsideal_yy/ypt/space/attention/bquery
+地址:/dsideal_yy/space/attention/bquery
 参数:
 personid           personid
 identityid         身份id
@@ -122,7 +122,7 @@ b_identityid       被关注人的身份id.
 
 ============================================================
 7.获取访客记录列表
-地址：/dsideal_yy/ypt/space/attention/list_access        get方式.
+地址：/dsideal_yy/space/attention/list_access        get方式.
 参数：
 personid           personid
 identityid         身份id
@@ -142,7 +142,7 @@ type
 }
 
 8.获取访问过的记录列表
-地址：/dsideal_yy/ypt/space/attention/blist_access        get方式.
+地址：/dsideal_yy/space/attention/blist_access        get方式.
 参数：
 personid           personid
 identityid         身份id

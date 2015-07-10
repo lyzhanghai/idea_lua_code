@@ -52,28 +52,20 @@ function _M.save(param)
 end
 
 local function getPersonInfoByRedis(zResult)
-    local redisDb = RedisUtil:getDb()
-    local result = {}
+    local aService = require "space.services.PersonAndOrgBaseInfoService"
+    local id_result = {}
     if zResult and zResult[1] and zResult[1] ~= "ok" then
         for i = 1, #zResult, 2 do
             local temp = {}
             local r = Split(zResult[i], "_")
-            local _personid = r[2];
-            local _identityid = r[1];
-            local personA = redisDb:hmget("person_" .. _personid .. "_" .. _identityid, "person_name", "avatar_url");
-
-            local person_name = personA[1]
-            local avatar_url = personA[2]
-            log.debug(person_name)
-            log.debug(avatar_url)
-            temp.personid = _personid;
-            temp.identityid = _identityid
-            temp.person_name = person_name;
-            temp.avatar_url = avatar_url;
-            table.insert(result, temp);
+            temp.person_id = r[2];
+            temp.identity_id = r[1];
+            table.insert(id_result,temp);
         end
+        local rt = aService:getPersonBaseInfoByPersonIdAndIdentityId(id_result)
+        return rt;
     end
-    return result;
+    return {};
 end
 
 local function getAttention(personid, identityid)
@@ -130,18 +122,21 @@ function _M.get(param)
     --    })
     local db = SsdbUtil:getDb();
     if param.personid and param.identityid then
+        --关注量
         local attention_count = db:get("space_attention_identityid_" .. param.identityid .. "_personid_" .. param.personid .. "_count"); --关注数量
         if attention_count and attention_count[1] and string.len(attention_count[1]) > 0 then
             result.attention_count = attention_count[1];
         else
             result.attention_count = 0
         end
+        --被关注量
         local attentionb_count = db:get("space_b_attention_identityid_" .. param.identityid .. "_personid_" .. param.personid .. "_count"); --被关注数量
         if attentionb_count and attentionb_count[1] and string.len(attentionb_count[1]) > 0 then
             result.attentionb_count = attentionb_count[1];
         else
             result.attentionb_count = 0
         end
+        --是否关注
         local is_attention = db:zexists("space_attention_identityid_" .. param.identityid .. "_personid_" .. param.personid, param.b_identityid .. "_" .. param.b_personid)
         log.debug(is_attention)
         if is_attention and is_attention[1] and tonumber(is_attention[1]) > 0 then
@@ -149,6 +144,9 @@ function _M.get(param)
         else
             result.is_attention = 0;
         end
+        --被谁访问
+        db:zset("space_attention_access_" .. param.type .. "_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid, param.identityid .. "_" .. param.personid, TS.getTs())
+
     end
     local access_quantity = db:get("space_attention_access_" .. param.type .. "_quantity_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid)
     if access_quantity and access_quantity[1] and string.len(access_quantity[1]) > 0 then
@@ -156,6 +154,10 @@ function _M.get(param)
     else
         result.access_quantity = 0
     end
+    db:incr("space_attention_access_" .. param.type .. "_quantity_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid, 1);--访问量加1
+
+
+
     return result;
 end
 

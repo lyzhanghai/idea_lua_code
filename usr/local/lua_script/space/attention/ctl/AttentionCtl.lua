@@ -87,19 +87,19 @@ end
 
 ------------------------------------------------------------------------------------------------------
 -- 设置访问量.
-local function access()
-    local personid = request:getStrParam("personid", false, true) --关注人id
-    local type = request:getStrParam("type", true, true) --访问的类型（博文，空间）
-    local identityid = request:getStrParam("identityid", false, true) --关注人id
-    local b_personid = request:getStrParam("b_personid", true, true) --被关注人id
-    local b_identityid = request:getStrParam("b_identityid", true, true) --被关注人的身份.
-    local result = service.access(personid, identityid, b_personid, b_identityid, type)
-    if not result then
-        ngx.say(cjson.encode({ success = false }))
-        return;
-    end
-    ngx.say(cjson.encode({ success = true }))
-end
+--local function access()
+--    local personid = request:getStrParam("personid", false, true) --关注人id
+--    local type = request:getStrParam("type", true, true) --访问的类型（博文，空间）
+--    local identityid = request:getStrParam("identityid", false, true) --关注人id
+--    local b_personid = request:getStrParam("b_personid", true, true) --被关注人id
+--    local b_identityid = request:getStrParam("b_identityid", true, true) --被关注人的身份.
+--    local result = service.access(personid, identityid, b_personid, b_identityid, type)
+--    if not result then
+--        ngx.say(cjson.encode({ success = false }))
+--        return;
+--    end
+--    ngx.say(cjson.encode({ success = true }))
+--end
 
 local function accesslist()
     local personid = request:getStrParam("personid", true, true) --关注人id

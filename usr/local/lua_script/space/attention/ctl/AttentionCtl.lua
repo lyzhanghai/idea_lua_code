@@ -76,7 +76,8 @@ local function get()
     local type = request:getStrParam("type", true, true) --访问的类型（博文，空间）
     local b_personid = request:getStrParam("b_personid", true, true) --被关注人id
     local b_identityid = request:getStrParam("b_identityid", true, true) --被关注人的身份.
-    local result = service.get({ personid = personid, identityid = identityid, b_personid = b_personid, b_identityid = b_identityid ,type= type})
+    log.debug(type)
+    local result = service.get({ personid = personid, identityid = identityid, b_personid = b_personid, b_identityid = b_identityid ,type=type})
     if not result then
         result.success = false
         ngx.say(cjson.encode(result))
@@ -100,12 +101,26 @@ end
 --    end
 --    ngx.say(cjson.encode({ success = true }))
 --end
-
+--谁看过我
 local function accesslist()
     local personid = request:getStrParam("personid", true, true) --关注人id
     local identityid = request:getStrParam("identityid", true, true) --关注人id
     local type = request:getStrParam("type", true, true) --访问的类型（博文，空间）
     local list = service.accesslist(personid, identityid, type)
+    local result = { success = true, list = {} }
+    if not list then
+        ngx.say(cjson.encode({ success = false }))
+        return;
+    end
+    result.list = list
+    ngx.say(cjson.encode(result));
+end
+--我看过谁
+local function baccesslist()
+    local personid = request:getStrParam("personid", true, true) --关注人id
+    local identityid = request:getStrParam("identityid", true, true) --关注人id
+    local type = request:getStrParam("type", true, true) --访问的类型（博文，空间）
+    local list = service.accesslist_b(personid, identityid, type)
     local result = { success = true, list = {} }
     if not list then
         ngx.say(cjson.encode({ success = false }))
@@ -136,11 +151,12 @@ end
 -- 按功能分
 local urls = {
     context .. '/save', save,
-    context .. '/query', query,
-    context .. '/bquery', bquery,
+    no_permission_context .. '/query', query,
+    no_permission_context .. '/bquery', bquery,
     no_permission_context .. '/get', get,
-    no_permission_context .. '/access', access,
-    context .. '/list_access', accesslist,
+   -- no_permission_context .. '/access', access,
+    no_permission_context .. '/list_access', accesslist,
+    no_permission_context .. '/blist_access', baccesslist,
     context .. '/cancel', delete
 }
 local app = web.application(urls, nil)

@@ -60,7 +60,7 @@ local function getPersonInfoByRedis(zResult)
             local r = Split(zResult[i], "_")
             temp.person_id = r[2];
             temp.identity_id = r[1];
-            table.insert(id_result,temp);
+            table.insert(id_result, temp);
         end
         local rt = aService:getPersonBaseInfoByPersonIdAndIdentityId(id_result)
         return rt;
@@ -120,17 +120,18 @@ function _M.get(param)
     --        personid = personid,
     --        identityid = identityid,
     --    })
+    log.debug(param)
     local db = SsdbUtil:getDb();
     if param.personid and param.identityid then
         --关注量
-        local attention_count = db:get("space_attention_identityid_" .. param.identityid .. "_personid_" .. param.personid .. "_count"); --关注数量
+        local attention_count = db:get("space_attention_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid .. "_count"); --关注数量
         if attention_count and attention_count[1] and string.len(attention_count[1]) > 0 then
             result.attention_count = attention_count[1];
         else
             result.attention_count = 0
         end
         --被关注量
-        local attentionb_count = db:get("space_b_attention_identityid_" .. param.identityid .. "_personid_" .. param.personid .. "_count"); --被关注数量
+        local attentionb_count = db:get("space_b_attention_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid .. "_count"); --被关注数量
         if attentionb_count and attentionb_count[1] and string.len(attentionb_count[1]) > 0 then
             result.attentionb_count = attentionb_count[1];
         else
@@ -146,7 +147,7 @@ function _M.get(param)
         end
         --被谁访问
         db:zset("space_attention_access_" .. param.type .. "_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid, param.identityid .. "_" .. param.personid, TS.getTs())
-
+        db:zset("space_attention_b_access_" .. param.type .. "_identityid_" .. param.identityid .. "_personid_" .. param.personid, param.b_identityid .. "_" .. param.b_personid, TS.getTs())
     end
     local access_quantity = db:get("space_attention_access_" .. param.type .. "_quantity_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid)
     if access_quantity and access_quantity[1] and string.len(access_quantity[1]) > 0 then
@@ -154,7 +155,7 @@ function _M.get(param)
     else
         result.access_quantity = 0
     end
-    db:incr("space_attention_access_" .. param.type .. "_quantity_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid, 1);--访问量加1
+    db:incr("space_attention_access_" .. param.type .. "_quantity_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid, 1); --访问量加1
 
 
 
@@ -178,15 +179,34 @@ function _M.accesslist(personid, identityid, type)
     return result;
 end
 
+function _M.accesslist_b(personid, identityid, type)
+    local db = SsdbUtil:getDb();
+    local zResult = db:zrange("space_attention_b_access_" .. type .. "_identityid_" .. identityid .. "_personid_" .. personid, 0, 10)
+    local result = getPersonInfoByRedis(zResult)
+    return result;
+end
+
 function _M.delete(param)
     checkParamIsNull(param)
     local db = SsdbUtil:getDb();
     local key = param.b_identityid .. "_" .. param.b_personid
     db:zdel("space_attention_identityid_" .. param.identityid .. "_personid_" .. param.personid, key)
-    db:incr("space_attention_identityid_" .. param.identityid .. "_personid_" .. param.personid .. "_count", -1);
+    local num = db:incr("space_attention_identityid_" .. param.identityid .. "_personid_" .. param.personid .. "_count", -1);
+    if num and num[1] then
+        if tonumber(num[1]) <= 0 then
+            db:set("space_attention_identityid_" .. param.identityid .. "_personid_" .. param.personid .. "_count", 0)
+        end
+    end
     local b_key = param.identityid .. "_" .. param.personid
     db:zdel("space_b_attention_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid, b_key)
-    db:incr("space_b_attention_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid .. "_count", -1);
+    local num_b = db:incr("space_b_attention_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid .. "_count", -1);
+    if num_b and num_b[1] then
+        if tonumber(num_b[1]) <= 0 then
+            db:set("space_b_attention_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid .. "_count", 0)
+        end
+    end
+    log.debug(num)
+    log.debug(num_b)
     return true;
 end
 

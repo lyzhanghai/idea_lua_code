@@ -140,3 +140,23 @@ type
             },{}
         ]
 }
+
+8.获取访问过的记录列表
+地址：/dsideal_yy/ypt/space/attention/blist_access        get方式.
+参数：
+personid           personid
+identityid         身份id
+type
+返回值：
+成功
+{
+  	"success":true,
+  	list = [
+            {
+                personid = personid;
+                identityid = 身份id
+                person_name = 姓名;
+                avatar_url = 头像;
+            },{}
+        ]
+}

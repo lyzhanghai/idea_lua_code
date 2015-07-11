@@ -317,6 +317,19 @@ local function getPostByUserInfo()
     ngx.say(cjson.encode(result))
 end
 
+
+-------------------------------------------------------------------------
+--获取回复次数
+--
+local function getPostCount()
+    local topicId = request:getStrParam("topic_id", true, true)
+    local result = {success = true }
+    local postService = getService("BbsPostService")
+    local count = postService:getPostCount(topicId);
+    result.count = count
+    ngx.say(cjson.encode(result))
+end
+
 -------------------------------------------------------------------------------------
 -- 配置url.
 -- 按功能分
@@ -331,6 +344,7 @@ local urls = {
     context .. '/bbsList$', getBbsList,
     context .. '/topic/getTopicByUserInfo', getTopicByUserInfo,
     context .. '/post/getPostByUserInfo', getPostByUserInfo,
+    context.. '/topic/getPostCount',getPostCount,
 }
 local app = web.application(urls, nil)
 app:start()

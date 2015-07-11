@@ -1,5 +1,6 @@
 local cjson = require "cjson"
 local ssdbUtil = require "social.common.ssdbutil"
+local redisUtil = require "social.common.redisutil"
 
 module(..., package.seeall) 
 
@@ -54,21 +55,25 @@ function getPersonBaseInfo(self, identityId, ...)
 end
 
 --获得个人空间基本信息,...为数组，数组里是table，table的属性是person_id和identity_id
-function getPersonBaseInfoByPersonIdAndIdentityId(self, ...)
+function getPersonBaseInfoByPersonIdAndIdentityId(self, pit)
 	local ssdb = ssdbUtil:getDb()
-	local pit = {...}
-
+	local redis = redisUtil:getDb()
 	local rt = rt or {}
 	for _, pi in ipairs(pit) do
-		local ajson, err = ssdb:get("space_ajson_personbaseinfo_"..pi.person_id..."_"..pi.identity_id)
+		local ajson, err = ssdb:get("space_ajson_personbaseinfo_"..pi.person_id.."_"..pi.identity_id)
 		local r = ajson and ajson[1] and string.len(ajson[1]) > 0 and cjson.decode(ajson[1]) or false
+
+		local person_name = redis:hget("person_"..pi.person_id.."_"..pi.identity_id, "person_name");
 
 		local t = t or {}
 		t.personId = pi.person_id
+		t.identity_id = pi.identity_id
+		t.person_name = person_name or ""
 		t.avatar_fileid = r and r.space_avatar_fileid or ""
 		t.person_description = r and r.person_description and ngx.decode_base64(r.person_description) or ""
 		table.insert(rt, t)
 	end
 	ssdbUtil:keepalive()
+	redisUtil:keepalive()
 	return rt
 end

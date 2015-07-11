@@ -41,9 +41,15 @@ type
  identityid         身份id
  b_personid         被关注人的id
  b_identityid       被关注人的身份id.
+ page_size
+ page_num
  返回值：
  {
      success = true,
+     total_row=10,
+     total_page=1,
+     page_size=10,
+     page_num=1,
      list = [
          {
              personid = personid;
@@ -65,9 +71,15 @@ personid           personid
 identityid         身份id
 b_personid         被关注人的id
 b_identityid       被关注人的身份id.
+ page_size
+ page_num
 返回值：
 {
     success = true,
+     total_row=10,
+     total_page=1,
+     page_size=10,
+     page_num=1,
     list = [
         {
             personid = personid;
@@ -127,10 +139,16 @@ b_identityid       被关注人的身份id.
 personid           personid
 identityid         身份id
 type
+page_size
+page_num
 返回值：
 成功
 {
   	"success":true,
+     total_row=10,
+     total_page=1,
+     page_size=10,
+     page_num=1,
   	list = [
             {
                 personid = personid;
@@ -147,10 +165,16 @@ type
 personid           personid
 identityid         身份id
 type
+ page_size
+ page_num
 返回值：
 成功
 {
   	"success":true,
+  	total_row=10,
+     total_page=1,
+     page_size=10,
+     page_num=1,
   	list = [
             {
                 personid = personid;

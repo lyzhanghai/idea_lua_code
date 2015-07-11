@@ -42,13 +42,19 @@ local function query()
     local identityid = request:getStrParam("identityid", true, true) --关注人id
     local b_personid = request:getStrParam("b_personid", true, true) --被关注人id
     local b_identityid = request:getStrParam("b_identityid", true, true) --被关注人的身份.
+    local page_size = request:getStrParam("page_size", true, true) --被关注人的身份.
+    local page_num = request:getStrParam("page_num", true, true) --被关注人的身份.
     local result = { success = true, list = {} }
-    local list = service.queryAttention({ personid = personid, identityid = identityid, b_personid = b_personid, b_identityid = b_identityid })
+    local list, totalRow, totalPage = service.queryAttention({ personid = personid, identityid = identityid, b_personid = b_personid, b_identityid = b_identityid, page_size = tonumber(page_size), page_num = tonumber(page_num) })
     if not list then
         ngx.say(cjson.encode({ success = false }))
         return;
     end
     result.list = list
+    result.total_row = totalRow
+    result.total_page = totalPage
+    result.page_size = page_size
+    result.page_num = page_num
     ngx.say(cjson.encode(result));
 end
 
@@ -60,13 +66,19 @@ local function bquery()
     local identityid = request:getStrParam("identityid", true, true) --关注人id
     local b_personid = request:getStrParam("b_personid", true, true) --被关注人id
     local b_identityid = request:getStrParam("b_identityid", true, true) --被关注人的身份.
+    local page_size = request:getStrParam("page_size", true, true) --被关注人的身份.
+    local page_num = request:getStrParam("page_num", true, true) --被关注人的身份.
     local result = { success = true, list = {} }
-    local list = service.queryBAttention({ personid = personid, identityid = identityid, b_personid = b_personid, b_identityid = b_identityid })
+    local list, totalRow, totalPage = service.queryBAttention({ personid = personid, identityid = identityid, b_personid = b_personid, b_identityid = b_identityid, page_size = tonumber(page_size), page_num = tonumber(page_num) })
     if not list then
         ngx.say(cjson.encode({ success = false }))
         return;
     end
     result.list = list
+    result.total_row = totalRow
+    result.total_page = totalPage
+    result.page_size = page_size
+    result.page_num = page_num
     ngx.say(cjson.encode(result));
 end
 
@@ -77,7 +89,7 @@ local function get()
     local b_personid = request:getStrParam("b_personid", true, true) --被关注人id
     local b_identityid = request:getStrParam("b_identityid", true, true) --被关注人的身份.
     log.debug(type)
-    local result = service.get({ personid = personid, identityid = identityid, b_personid = b_personid, b_identityid = b_identityid ,type=type})
+    local result = service.get({ personid = personid, identityid = identityid, b_personid = b_personid, b_identityid = b_identityid, type = type })
     if not result then
         result.success = false
         ngx.say(cjson.encode(result))
@@ -88,45 +100,58 @@ end
 
 ------------------------------------------------------------------------------------------------------
 -- 设置访问量.
---local function access()
---    local personid = request:getStrParam("personid", false, true) --关注人id
---    local type = request:getStrParam("type", true, true) --访问的类型（博文，空间）
---    local identityid = request:getStrParam("identityid", false, true) --关注人id
---    local b_personid = request:getStrParam("b_personid", true, true) --被关注人id
---    local b_identityid = request:getStrParam("b_identityid", true, true) --被关注人的身份.
---    local result = service.access(personid, identityid, b_personid, b_identityid, type)
---    if not result then
---        ngx.say(cjson.encode({ success = false }))
---        return;
---    end
---    ngx.say(cjson.encode({ success = true }))
---end
---谁看过我
+-- local function access()
+-- local personid = request:getStrParam("personid", false, true) --关注人id
+-- local type = request:getStrParam("type", true, true) --访问的类型（博文，空间）
+-- local identityid = request:getStrParam("identityid", false, true) --关注人id
+-- local b_personid = request:getStrParam("b_personid", true, true) --被关注人id
+-- local b_identityid = request:getStrParam("b_identityid", true, true) --被关注人的身份.
+-- local result = service.access(personid, identityid, b_personid, b_identityid, type)
+-- if not result then
+-- ngx.say(cjson.encode({ success = false }))
+-- return;
+-- end
+-- ngx.say(cjson.encode({ success = true }))
+-- end
+-- 谁看过我
 local function accesslist()
     local personid = request:getStrParam("personid", true, true) --关注人id
     local identityid = request:getStrParam("identityid", true, true) --关注人id
     local type = request:getStrParam("type", true, true) --访问的类型（博文，空间）
-    local list = service.accesslist(personid, identityid, type)
+    local page_size = request:getStrParam("page_size", true, true)
+    local page_num = request:getStrParam("page_num", true, true)
+    local list, totalRow, totalPage = service.accesslist(personid, identityid, type, page_size, page_num)
     local result = { success = true, list = {} }
     if not list then
         ngx.say(cjson.encode({ success = false }))
         return;
     end
     result.list = list
+    result.total_row = totalRow
+    result.total_page = totalPage
+    result.page_size = page_size
+    result.page_num = page_num
     ngx.say(cjson.encode(result));
 end
+
 --我看过谁
 local function baccesslist()
     local personid = request:getStrParam("personid", true, true) --关注人id
     local identityid = request:getStrParam("identityid", true, true) --关注人id
     local type = request:getStrParam("type", true, true) --访问的类型（博文，空间）
-    local list = service.accesslist_b(personid, identityid, type)
+    local page_size = request:getStrParam("page_size", true, true)
+    local page_num = request:getStrParam("page_num", true, true)
+    local list, totalRow, totalPage = service.accesslist_b(personid, identityid, type, page_size, page_num)
     local result = { success = true, list = {} }
     if not list then
         ngx.say(cjson.encode({ success = false }))
         return;
     end
     result.list = list
+    result.total_row = totalRow
+    result.total_page = totalPage
+    result.page_size = page_size
+    result.page_num = page_num
     ngx.say(cjson.encode(result));
 end
 
@@ -154,7 +179,7 @@ local urls = {
     no_permission_context .. '/query', query,
     no_permission_context .. '/bquery', bquery,
     no_permission_context .. '/get', get,
-   -- no_permission_context .. '/access', access,
+    -- no_permission_context .. '/access', access,
     no_permission_context .. '/list_access', accesslist,
     no_permission_context .. '/blist_access', baccesslist,
     context .. '/cancel', delete

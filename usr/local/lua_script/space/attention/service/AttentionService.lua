@@ -58,9 +58,15 @@ local function getPersonInfoByRedis(zResult)
         for i = 1, #zResult, 2 do
             local temp = {}
             local r = Split(zResult[i], "_")
-            temp.person_id = r[2];
-            temp.identity_id = r[1];
-            table.insert(id_result, temp);
+            while true do
+                if r[1] == "" or r[2] == "" then
+                    break;
+                end
+                temp.person_id = r[2];
+                temp.identity_id = r[1];
+                table.insert(id_result, temp);
+                break;
+            end
         end
         local rt = aService:getPersonBaseInfoByPersonIdAndIdentityId(id_result)
         return rt;
@@ -68,22 +74,38 @@ local function getPersonInfoByRedis(zResult)
     return {};
 end
 
-local function getAttention(personid, identityid)
+
+local function getCount(key, pagesize, pagenum)
     local db = SsdbUtil:getDb();
-    local zResult = db:zrange("space_attention_identityid_" .. identityid .. "_personid_" .. personid, 0, 10)
-    log.debug(zResult);
-    local result = getPersonInfoByRedis(zResult)
-    return result;
+    local t_totalRow = db:zcount(key, "", "")
+    local totalRow = t_totalRow[1]
+    local totalPage = math.floor((totalRow + pagesize - 1) / pagesize)
+    if pagenum > totalPage then
+        pagenum = totalPage
+    end
+    local offset = pagesize * pagenum - pagesize
+    local limit = pagesize
+    return offset, limit, totalRow, totalPage
 end
 
-local function getBAttention(personid, identityid)
+local function getAttention(personid, identityid, pagesize, pagenum)
+    local db = SsdbUtil:getDb();
+    local offset, limit, totalRow, totalPage = getCount("space_attention_identityid_" .. identityid .. "_personid_" .. personid, pagesize, pagenum)
+    local zResult = db:zrange("space_attention_identityid_" .. identityid .. "_personid_" .. personid, offset, limit)
+    log.debug(zResult);
+    local result = getPersonInfoByRedis(zResult)
+    return result, totalRow, totalPage;
+end
+
+local function getBAttention(personid, identityid, pagesize, pagenum)
     local db = SsdbUtil:getDb();
     local name = "space_b_attention_identityid_" .. identityid .. "_personid_" .. personid;
-    local zResult = db:zrange(name, 0, 10)
+    local offset, limit, totalRow, totalPage = getCount(name, pagesize, pagenum)
+    local zResult = db:zrange(name, offset, limit)
     log.debug(name)
     log.debug(zResult);
     local result = getPersonInfoByRedis(zResult)
-    return result;
+    return result, totalRow, totalPage;
 end
 
 --------------------------------------------------------------
@@ -95,8 +117,8 @@ function _M.queryAttention(param)
         b_personid = param.b_personid,
         b_identityid = param.b_identityid,
     })
-    local result = getAttention(param.personid, param.identityid)
-    return result
+    local result, totalRow, totalPage = getAttention(param.personid, param.identityid, param.page_size, param.page_num)
+    return result, totalRow, totalPage
 end
 
 --------------------------------------------------------------
@@ -109,8 +131,8 @@ function _M.queryBAttention(param)
         b_personid = param.b_personid,
         b_identityid = param.b_identityid,
     })
-    local result = getBAttention(param.personid, param.identityid)
-    return result
+    local result, totalRow, totalPage = getBAttention(param.personid, param.identityid, param.page_size, param.page_num)
+    return result, totalRow, totalPage
 end
 
 
@@ -172,18 +194,23 @@ function _M.access(personid, identityid, b_personid, b_identityid, type)
     return result;
 end
 
-function _M.accesslist(personid, identityid, type)
+function _M.accesslist(personid, identityid, type, pagesize, pagenum)
     local db = SsdbUtil:getDb();
-    local zResult = db:zrange("space_attention_access_" .. type .. "_identityid_" .. identityid .. "_personid_" .. personid, 0, 10)
+    local name = "space_attention_access_" .. type .. "_identityid_" .. identityid .. "_personid_" .. personid;
+    local offset, limit, totalRow, totalPage = getCount(name, pagesize, pagenum)
+    local zResult = db:zrange(name, offset, limit)
+    log.debug(zResult)
     local result = getPersonInfoByRedis(zResult)
-    return result;
+    return result, totalRow, totalPage;
 end
 
-function _M.accesslist_b(personid, identityid, type)
+function _M.accesslist_b(personid, identityid, type, pagesize, pagenum)
     local db = SsdbUtil:getDb();
-    local zResult = db:zrange("space_attention_b_access_" .. type .. "_identityid_" .. identityid .. "_personid_" .. personid, 0, 10)
+    local name = "space_attention_b_access_" .. type .. "_identityid_" .. identityid .. "_personid_" .. personid
+    local offset, limit, totalRow, totalPage = getCount(name, pagesize, pagenum)
+    local zResult = db:zrange(name, offset, limit)
     local result = getPersonInfoByRedis(zResult)
-    return result;
+    return result, totalRow, totalPage;
 end
 
 function _M.delete(param)

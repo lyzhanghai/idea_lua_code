@@ -25,7 +25,7 @@
 		]
 }
 保存快乐分享
-1接口地址: /dsideal_yy/activity_share/save
+1接口地址: /dsideal_yy/ypt/activity_share/save
 2.参数
     title
     context
@@ -51,7 +51,7 @@
     {"info":{"name":"","data":"请求失败"},"success":false}
 
 修改快乐分享
-1接口地址: /dsideal_yy/activity_share/update
+1接口地址: /dsideal_yy/ypt/activity_share/update
 2.参数
 id
 title
@@ -77,7 +77,7 @@ list:[{
       }
 {"info":{"name":"","data":"请求失败"},"success":false}
  删除快乐分享
-1接口地址: /dsideal_yy/activity_share/delete
+1接口地址: /dsideal_yy/ypt/activity_share/delete
 2.参数
 		id.
 3.post

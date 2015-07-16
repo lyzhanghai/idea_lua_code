@@ -43,7 +43,7 @@ local function listFromDb(param)
     local _pagesize = tonumber(param.page_size)
     local list_sql = "SELECT id,title,create_date FROM T_SOCIAL_ACTIVITY_SHARE WHERE PERSON_ID=%s AND IDENTITY_ID=%s AND MESSAGE_TYPE=%s"
     list_sql = string.format(list_sql, param.person_id, param.identity_id, param.message_type)
-    local count_sql = "SELECT count(id)  as totalRow  FROM T_SOCIAL_ACTIVITY_SHARE WHERE PERSON_ID=%s AND IDENTITY_ID=%s AND MESSAGE_TYPE=%s"
+    local count_sql = "SELECT count(id)  as totalRow  FROM T_SOCIAL_ACTIVITY_SHARE WHERE PERSON_ID=%s AND IDENTITY_ID=%s AND MESSAGE_TYPE=%s ORDER BY SEQUENCE"
     count_sql = string.format(count_sql, param.person_id, param.identity_id, param.message_type)
     local count = DBUtil:querySingleSql(count_sql);
     if TableUtil:length(count) == 0 then

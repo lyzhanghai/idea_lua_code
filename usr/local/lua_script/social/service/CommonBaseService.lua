@@ -1,3 +1,7 @@
+--
+--    张海  2015-05-06
+--    描述：  CommonBaseService 接口.
+--
 local CommonBaseService = {
 }
 --- 业务逻辑模块初始化

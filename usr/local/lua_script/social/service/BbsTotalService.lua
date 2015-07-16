@@ -1,3 +1,7 @@
+--
+--    张海  2015-05-06
+--    描述：  BBS service 接口.
+--
 local SsdbUtil = require("social.common.ssdbutil")
 local util = require("social.common.util")
 local date = require("social.common.date")

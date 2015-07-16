@@ -42,8 +42,8 @@ local function query()
     local identityid = request:getStrParam("identityid", true, true) --关注人id
     local b_personid = request:getStrParam("b_personid", true, true) --被关注人id
     local b_identityid = request:getStrParam("b_identityid", true, true) --被关注人的身份.
-    local page_size = request:getStrParam("page_size", true, true) --被关注人的身份.
-    local page_num = request:getStrParam("page_num", true, true) --被关注人的身份.
+    local page_size = request:getNumParam("page_size", false, true) --被关注人的身份.
+    local page_num = request:getNumParam("page_num", false, true) --被关注人的身份.
     local result = { success = true, list = {} }
     local list, totalRow, totalPage = service.queryAttention({ personid = personid, identityid = identityid, b_personid = b_personid, b_identityid = b_identityid, page_size = tonumber(page_size), page_num = tonumber(page_num) })
     if not list then
@@ -66,8 +66,8 @@ local function bquery()
     local identityid = request:getStrParam("identityid", true, true) --关注人id
     local b_personid = request:getStrParam("b_personid", true, true) --被关注人id
     local b_identityid = request:getStrParam("b_identityid", true, true) --被关注人的身份.
-    local page_size = request:getStrParam("page_size", true, true) --被关注人的身份.
-    local page_num = request:getStrParam("page_num", true, true) --被关注人的身份.
+    local page_size = request:getNumParam("page_size", false, true) --被关注人的身份.
+    local page_num = request:getNumParam("page_num", false, true) --被关注人的身份.
     local result = { success = true, list = {} }
     local list, totalRow, totalPage = service.queryBAttention({ personid = personid, identityid = identityid, b_personid = b_personid, b_identityid = b_identityid, page_size = tonumber(page_size), page_num = tonumber(page_num) })
     if not list then
@@ -118,8 +118,8 @@ local function accesslist()
     local personid = request:getStrParam("personid", true, true) --关注人id
     local identityid = request:getStrParam("identityid", true, true) --关注人id
     local type = request:getStrParam("type", true, true) --访问的类型（博文，空间）
-    local page_size = request:getStrParam("page_size", true, true)
-    local page_num = request:getStrParam("page_num", true, true)
+    local page_size = request:getNumParam("page_size", false, true)
+    local page_num = request:getNumParam("page_num", false, true)
     local list, totalRow, totalPage = service.accesslist(personid, identityid, type, page_size, page_num)
     local result = { success = true, list = {} }
     if not list then
@@ -139,8 +139,8 @@ local function baccesslist()
     local personid = request:getStrParam("personid", true, true) --关注人id
     local identityid = request:getStrParam("identityid", true, true) --关注人id
     local type = request:getStrParam("type", true, true) --访问的类型（博文，空间）
-    local page_size = request:getStrParam("page_size", true, true)
-    local page_num = request:getStrParam("page_num", true, true)
+    local page_size = request:getNumParam("page_size", false, true)
+    local page_num = request:getNumParam("page_num", false, true)
     local list, totalRow, totalPage = service.accesslist_b(personid, identityid, type, page_size, page_num)
     local result = { success = true, list = {} }
     if not list then

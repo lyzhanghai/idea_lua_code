@@ -92,6 +92,7 @@ local function getAttention(personid, identityid, pagesize, pagenum)
     local db = SsdbUtil:getDb();
     local offset, limit, totalRow, totalPage = getCount("space_attention_identityid_" .. identityid .. "_personid_" .. personid, pagesize, pagenum)
     local zResult = db:zrange("space_attention_identityid_" .. identityid .. "_personid_" .. personid, offset, limit)
+
     log.debug(zResult);
     local result = getPersonInfoByRedis(zResult)
     return result, totalRow, totalPage;
@@ -144,21 +145,8 @@ function _M.get(param)
     --    })
     log.debug(param)
     local db = SsdbUtil:getDb();
-    if param.personid and param.identityid then
-        --关注量
-        local attention_count = db:get("space_attention_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid .. "_count"); --关注数量
-        if attention_count and attention_count[1] and string.len(attention_count[1]) > 0 then
-            result.attention_count = attention_count[1];
-        else
-            result.attention_count = 0
-        end
-        --被关注量
-        local attentionb_count = db:get("space_b_attention_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid .. "_count"); --被关注数量
-        if attentionb_count and attentionb_count[1] and string.len(attentionb_count[1]) > 0 then
-            result.attentionb_count = attentionb_count[1];
-        else
-            result.attentionb_count = 0
-        end
+    if param.personid and param.identityid and string.len(param.personid)>0 and string.len(param.identityid) then
+
         --是否关注
         local is_attention = db:zexists("space_attention_identityid_" .. param.identityid .. "_personid_" .. param.personid, param.b_identityid .. "_" .. param.b_personid)
         log.debug(is_attention)
@@ -171,6 +159,22 @@ function _M.get(param)
         db:zset("space_attention_access_" .. param.type .. "_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid, param.identityid .. "_" .. param.personid, TS.getTs())
         db:zset("space_attention_b_access_" .. param.type .. "_identityid_" .. param.identityid .. "_personid_" .. param.personid, param.b_identityid .. "_" .. param.b_personid, TS.getTs())
     end
+
+    --关注量
+    local attention_count = db:get("space_attention_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid .. "_count"); --关注数量
+    if attention_count and attention_count[1] and string.len(attention_count[1]) > 0 then
+        result.attention_count = attention_count[1];
+    else
+        result.attention_count = 0
+    end
+    --被关注量
+    local attentionb_count = db:get("space_b_attention_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid .. "_count"); --被关注数量
+    if attentionb_count and attentionb_count[1] and string.len(attentionb_count[1]) > 0 then
+        result.attentionb_count = attentionb_count[1];
+    else
+        result.attentionb_count = 0
+    end
+
     local access_quantity = db:get("space_attention_access_" .. param.type .. "_quantity_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid)
     if access_quantity and access_quantity[1] and string.len(access_quantity[1]) > 0 then
         result.access_quantity = access_quantity[1]
@@ -197,6 +201,7 @@ end
 function _M.accesslist(personid, identityid, type, pagesize, pagenum)
     local db = SsdbUtil:getDb();
     local name = "space_attention_access_" .. type .. "_identityid_" .. identityid .. "_personid_" .. personid;
+    log.debug(name)
     local offset, limit, totalRow, totalPage = getCount(name, pagesize, pagenum)
     local zResult = db:zrange(name, offset, limit)
     log.debug(zResult)
@@ -207,6 +212,7 @@ end
 function _M.accesslist_b(personid, identityid, type, pagesize, pagenum)
     local db = SsdbUtil:getDb();
     local name = "space_attention_b_access_" .. type .. "_identityid_" .. identityid .. "_personid_" .. personid
+    log.debug(name)
     local offset, limit, totalRow, totalPage = getCount(name, pagesize, pagenum)
     local zResult = db:zrange(name, offset, limit)
     local result = getPersonInfoByRedis(zResult)

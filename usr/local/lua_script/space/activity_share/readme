@@ -63,7 +63,7 @@ message_type
 list:[{
 	file_id
 	style
-    seq
+    sequence
     memo
     source 来源，1本地上传，2相册
 },{

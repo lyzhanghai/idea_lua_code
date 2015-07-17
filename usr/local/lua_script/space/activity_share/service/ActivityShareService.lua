@@ -166,7 +166,7 @@ local function saveToDb(param)
         if param.org_ids and string.len(param.org_ids) > 0 then
             local insert_sql_o = "INSERT INTO T_SOCIAL_ACTIVITY_SHARE_ORG (ORG_ID,IDENTITY_ID,SHARE_ID) VALUES "
             local _orgids = Split(param.org_ids, ",")
-            local _o_value_sql;
+            local _o_value_sql="";
             for i = 1, #_orgids do
                 local formatstr = (i == #_orgids and "(%s,%s,%s);") or "(%s,%s,%s),"
                 _o_value_sql = _o_value_sql .. string.format(formatstr, quote(_orgids[i]), quote(param.identity_id), share_id)

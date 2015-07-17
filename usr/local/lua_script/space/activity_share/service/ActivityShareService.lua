@@ -11,6 +11,7 @@ local SsdbUtil = require("social.common.ssdbutil")
 local TS = require "resty.TS"
 local TableUtil = require("social.common.table")
 local DBUtil = require "common.DBUtil";
+local Constant = require "social.common.constant"
 local quote = ngx.quote_sql_str
 local _M = {}
 --------------------------------------------------------------------
@@ -41,9 +42,9 @@ end
 local function listFromDb(param)
     local _pagenum = tonumber(param.page_num)
     local _pagesize = tonumber(param.page_size)
-    local list_sql = "SELECT id,title,create_date FROM T_SOCIAL_ACTIVITY_SHARE WHERE PERSON_ID=%s AND IDENTITY_ID=%s AND MESSAGE_TYPE=%s"
+    local list_sql = "SELECT id,title,create_date FROM T_SOCIAL_ACTIVITY_SHARE WHERE PERSON_ID=%s AND IDENTITY_ID=%s AND MESSAGE_TYPE=%s ORDER BY CREATE_DATE DESC"
     list_sql = string.format(list_sql, param.person_id, param.identity_id, param.message_type)
-    local count_sql = "SELECT count(id)  as totalRow  FROM T_SOCIAL_ACTIVITY_SHARE WHERE PERSON_ID=%s AND IDENTITY_ID=%s AND MESSAGE_TYPE=%s ORDER BY SEQUENCE"
+    local count_sql = "SELECT count(id)  as totalRow  FROM T_SOCIAL_ACTIVITY_SHARE WHERE PERSON_ID=%s AND IDENTITY_ID=%s AND MESSAGE_TYPE=%s"
     count_sql = string.format(count_sql, param.person_id, param.identity_id, param.message_type)
     local count = DBUtil:querySingleSql(count_sql);
     if TableUtil:length(count) == 0 then
@@ -58,6 +59,18 @@ local function listFromDb(param)
     log.debug("获取活动列表.list sql:" .. list_sql);
     local list = DBUtil:querySingleSql(list_sql);
     log.debug(list);
+    if list then
+        local ssdb = SsdbUtil:getDb()
+        for i = 1, #list do
+            local id = list[i]['id']
+            local count = ssdb.get("social_activity_share_view_.." .. id .. ".._count")
+            local view_count = 0
+            if count and count[1] and string.len(count[1]) > 0 then
+                view_count = tonumber(count[1]);
+            end
+            list[i]['view_count'] = view_count;
+        end
+    end
     local result = { list = list, totalRow = totalRow, totalPage = totalPage, pageNum = _pagenum, pageSize = _pagesize }
     return result;
 end
@@ -65,8 +78,48 @@ end
 local function listFromSSDB(param)
 end
 
+
+local function listOrgFromDb(param)
+    local _pagenum = tonumber(param.page_num)
+    local _pagesize = tonumber(param.page_size)
+    local list_sql = "SELECT T1.id,T1.title,T1.create_date FROM T_SOCIAL_ACTIVITY_SHARE T1,T_SOCIAL_ACTIVITY_SHARE_ORG T2 WHERE T1.ID = T2.SHARE_ID AND T1.PERSON_ID=%s AND T1.IDENTITY_ID=%s AND T1.MESSAGE_TYPE=%s AND T2.ORG_ID=%s ORDER BY T1.CREATE_DATE DESC"
+    list_sql = string.format(list_sql, param.person_id, param.identity_id, param.message_type, param.orgid)
+    local count_sql = "SELECT count(id)  as totalRow  FROM T_SOCIAL_ACTIVITY_SHARE T1,T_SOCIAL_ACTIVITY_SHARE_ORG T2 WHERE T1.ID = T2.SHARE_ID AND T1.PERSON_ID=%s AND T1.IDENTITY_ID=%s AND T1.MESSAGE_TYPE=%s AND T2.ORG_ID=%s"
+    count_sql = string.format(count_sql, param.person_id, param.identity_id, param.message_type, param.orgid)
+    local count = DBUtil:querySingleSql(count_sql);
+    if TableUtil:length(count) == 0 then
+        return nil;
+    end
+    log.debug("获取主题帖列表.count:" .. count[1].totalRow);
+    local totalRow = count[1].totalRow
+    local totalPage = math.floor((totalRow + _pagesize - 1) / _pagesize)
+    local offset = _pagesize * _pagenum - _pagesize
+
+    list_sql = list_sql .. " LIMIT " .. offset .. "," .. _pagesize
+    log.debug("获取活动列表.list sql:" .. list_sql);
+    local list = DBUtil:querySingleSql(list_sql);
+    log.debug(list);
+    if list then
+        local ssdb = SsdbUtil:getDb()
+        for i = 1, #list do
+            local id = list[i]['id']
+            local count = ssdb.get("social_activity_share_view_.." .. id .. ".._count")
+            local view_count = 0
+            if count and count[1] and string.len(count[1]) > 0 then
+                view_count = tonumber(count[1]);
+            end
+            list[i]['view_count'] = view_count;
+        end
+    end
+    local result = { list = list, totalRow = totalRow, totalPage = totalPage, pageNum = _pagenum, pageSize = _pagesize }
+    return result;
+end
+
 function _M.list(param)
-    checkParamIsNull(param)
+    if param.orgid and string.len(param.orgid) > 0 then
+        return listOrgFromDb(param);
+    end
+
     return listFromDb(param)
 end
 
@@ -104,17 +157,28 @@ local function saveToDb(param)
         local insert_sql = "insert  into t_social_activity_share_detail (file_id,share_id,memo,sequence,style,source) values "
         local values_sql = ""
         for i = 1, #list do
-            local formatstr;
-            formatstr = (i == #list and "(%s,%s,%s,%s,%s,%s);") or "(%s,%s,%s,%s,%s,%s),"
+            local formatstr = (i == #list and "(%s,%s,%s,%s,%s,%s);") or "(%s,%s,%s,%s,%s,%s),"
             values_sql = values_sql .. string.format(formatstr, quote(list[i].file_id), share_id, quote(list[i].memo), list[i].sequence, quote(list[i].style), quote(list[i].source))
         end
         local sql = insert_sql .. values_sql
         log.debug(sql);
         local r, err, errno, sqlstate = db:query(sql);
-        --        log.debug(r)
-        --        log.debug(err)
-        --        log.debug(errno)
-        --        log.debug(sqlstate)
+        if param.org_ids and string.len(param.org_ids) > 0 then
+            local insert_sql_o = "INSERT INTO T_SOCIAL_ACTIVITY_SHARE_ORG (ORG_ID,IDENTITY_ID,SHARE_ID) VALUES "
+            local _orgids = Split(param.org_ids, ",")
+            local _o_value_sql;
+            for i = 1, #_orgids do
+                local formatstr = (i == #_orgids and "(%s,%s,%s);") or "(%s,%s,%s),"
+                _o_value_sql = _o_value_sql .. string.format(formatstr, quote(_orgids[i]), quote(param.identity_id), share_id)
+            end
+            local _or, err, errno, sqlstate = db:query(insert_sql_o .. _o_value_sql);
+            if not _or then
+                log.debug("执行ROLLBACK")
+                db:query("ROLLBACK;");
+                return false
+            end
+        end
+
         if not r then
             log.debug("执行ROLLBACK")
             db:query("ROLLBACK;");
@@ -169,22 +233,46 @@ local function deleteToDb(id)
     return true;
 end
 
-local function deleteToSSDB(id)
-    local db = SsdbUtil:getDb()
-    local key = "social_activity_share_id_" .. id;
-    db:zdel("social_activity_share", key)
-    db:hclear(key);
+local function deleteOrgToDb(org_id, id)
+    local db = DBUtil:getDb()
+    db:query("START TRANSACTION;")
+    local delete_org_sql = "DELETE FROM T_SOCIAL_ACTIVITY_SHARE_ORG WHERE ORG_ID=" .. org_id;
+    local result_o = db:query(delete_org_sql)
+    if result_o.affected_rows > 0 then
+        local delete_sql = "UPDATE T_SOCIAL_ACTIVITY_SHARE SET IS_DELETE = 1 WHERE ID = " .. id
+        local result = db:query(delete_sql)
+        if result.affected_rows > 0 then
+            local delete_detail_sql = "UPDATE T_SOCIAL_ACTIVITY_SHARE_DETAIL SET IS_DELETE = 1 WHERE SHARE_ID = " .. id
+            local r = db:query(delete_detail_sql)
+            if r then
+                db:query("COMMIT;")
+            else
+                db:query("ROLLBACK;");
+                return false;
+            end
+        else
+            db:query("ROLLBACK;");
+            return false;
+        end
+    end
+    DBUtil:keepDbAlive(db);
+    return true;
 end
 
-function _M.delete(id)
-    checkParamIsNull({ id = id })
-    local result = deleteToDb(id);
-    return result;
-    --    if result then
-    --        deleteToSSDB(id)
-    --        return true;
-    --    end
-    --    return false;
+--local function deleteToSSDB(id)
+--    local db = SsdbUtil:getDb()
+--    local key = "social_activity_share_id_" .. id;
+--    db:zdel("social_activity_share", key)
+--    db:hclear(key);
+--end
+
+function _M.delete(org_id, id)
+    --checkParamIsNull({ id = id })
+    if org_id == nil or string.len(org_id) == 0 then
+        return deleteToDb(id);
+    else
+        return deleteOrgToDb(org_id, id)
+    end
 end
 
 ---------------------------------------------------------------------------------------------------------------

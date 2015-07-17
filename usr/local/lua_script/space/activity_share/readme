@@ -4,6 +4,7 @@
     person_id
     identity_id
     message_type
+    org_id
     page_num
     page_size
 3．Get
@@ -33,6 +34,7 @@
     person_name
     identity_id
     message_type
+    org_ids --逗号分格.
     list:[
         {
             file_id
@@ -80,6 +82,7 @@ list:[{
 1接口地址: /dsideal_yy/ypt/activity_share/delete
 2.参数
 		id.
+		org_id可选
 3.post
 4.响应格式
 	{

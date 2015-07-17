@@ -28,6 +28,7 @@ local function save()
     local person_name = request:getStrParam("person_name", true, true) --person_name
     local identity_id = request:getStrParam("identity_id", true, true) --identity_id
     local message_type = request:getStrParam("message_type", true, true) --message_type
+    local org_ids = request:getStrParam("org_ids", false, true)
     --local source = request:getStrParam("source", true, true) --message_type
     local list = request:getStrParam("list", true, true) --list
     log.debug(list);
@@ -40,6 +41,7 @@ local function save()
     param.identity_id = identity_id
     param.message_type = message_type
     param.list = list_t
+    param.org_ids = org_ids;
    -- param.source = source;
     local result = service.save(param)
     if result then
@@ -59,10 +61,11 @@ local function list()
     local person_id = request:getStrParam("person_id", true, true) --person_id
     local identity_id = request:getStrParam("identity_id", true, true) --identity_id
     local message_type = request:getStrParam("message_type", false, true) --person_id
+    local org_id = request:getStrParam("org_id")
     message_type = ((message_type == nil or string.len(message_type) == 0) and "1") or message_type
     local page_num = request:getStrParam("page_num", true, true) --page_num
     local page_size = request:getStrParam("page_size", true, true) --page_size
-    local param = { person_id = person_id, identity_id = identity_id, message_type = message_type, page_num = page_num, page_size = page_size }
+    local param = { person_id = person_id, identity_id = identity_id, message_type = message_type, page_num = page_num, page_size = page_size,orgid = org_id }
     local result = service.list(param)
     ngx.say(cjson.encode(result))
 end
@@ -96,8 +99,10 @@ end
 
 local function delete()
     local id = request:getStrParam("id", true, true);
+    local org_id = request:getStrParam("org_id", false, true);
     log.debug(id);
-    local result = service.delete(id)
+    log.debug(org_id)
+    local result = service.delete(id,org_id)
     if result then
         ngx.say(cjson.encode({ success = true }))
     else
@@ -127,7 +132,7 @@ end
 -- 按功能分
 local urls = {
     context .. '/save', save,
-    context .. '/list', list,
+    no_permission_context .. '/list', list,
     context .. '/update', update,
     context .. '/delete', delete,
     context .. '/delete_detail', deleteDetail,

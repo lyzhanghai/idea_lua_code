@@ -2,6 +2,8 @@ local DBUtil = require "common.DBUtil";
 local TableUtil = require("social.common.table")
 local log = require("social.common.log")
 local RedisUtil = require("social.common.redisutil")
+local SsdbUtil = require("social.common.ssdbutil")
+local util = require("social.common.util")
 local quote = ngx.quote_sql_str
 local _M = {}
 
@@ -188,20 +190,23 @@ end
 local function reloadResourceM3U8Info(result)
     if result then
         if TableUtil:length(result) > 0 then
-            local db = RedisUtil:getDb()
+            local db = SsdbUtil:getDb()
+
             for i = 1, #result do
                 local resourceId = result[i]['resource_id'];
                 log.debug("在redis中获取 资源信息.key: resource_" .. resourceId)
-                local resRecord = db:hmget("resource_" .. resourceId, "m3u8_status", "m3u8_url", "thumb_id", "width", "height", "resource_format", "file_id")
-                log.debug(resRecord)
+                local keys = {"m3u8_status", "m3u8_url", "thumb_id", "width", "height", "resource_format", "file_id"}
+                local resRecord = db:multi_hget("resource_" .. resourceId,unpack(keys) )
+                 log.debug(resRecord)
                 if resRecord ~= ngx.null then
-                    local m3u8_status = tostring(resRecord[1])
-                    local m3u8_url = tostring(resRecord[2])
-                    local thumb_id = tostring(resRecord[3])
-                    local width = tostring(resRecord[4])
-                    local height = tostring(resRecord[5])
-                    local resource_format = tostring(resRecord[6])
-                    local file_id = tostring(resRecord[7])
+                    local res = util:multi_hget(resRecord, keys)
+                    local m3u8_status = tostring(res.m3u8_status)
+                    local m3u8_url = tostring(res.m3u8_url)
+                    local thumb_id = tostring(res.thumb_id)
+                    local width = tostring(res.width)
+                    local height = tostring(res.height)
+                    local resource_format = tostring(res.resource_format)
+                    local file_id = tostring(res.file_id)
                     result[i].m3u8_status = m3u8_status
                     result[i].m3u8_url = m3u8_url
                     result[i].thumb_id = thumb_id

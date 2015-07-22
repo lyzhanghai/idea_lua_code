@@ -42,9 +42,9 @@ end
 local function listFromDb(param)
     local _pagenum = tonumber(param.page_num)
     local _pagesize = tonumber(param.page_size)
-    local list_sql = "SELECT id,title,create_date FROM T_SOCIAL_ACTIVITY_SHARE WHERE PERSON_ID=%s AND IDENTITY_ID=%s AND MESSAGE_TYPE=%s ORDER BY CREATE_DATE DESC"
+    local list_sql = "SELECT id,title,create_date,person_id,person_name FROM T_SOCIAL_ACTIVITY_SHARE WHERE PERSON_ID=%s AND IDENTITY_ID=%s AND MESSAGE_TYPE=%s AND IS_DELETE=0 ORDER BY CREATE_DATE DESC"
     list_sql = string.format(list_sql, param.person_id, param.identity_id, param.message_type)
-    local count_sql = "SELECT count(id)  as totalRow  FROM T_SOCIAL_ACTIVITY_SHARE WHERE PERSON_ID=%s AND IDENTITY_ID=%s AND MESSAGE_TYPE=%s"
+    local count_sql = "SELECT count(id)  as totalRow  FROM T_SOCIAL_ACTIVITY_SHARE WHERE PERSON_ID=%s AND IDENTITY_ID=%s AND MESSAGE_TYPE=%s AND IS_DELETE=0"
     count_sql = string.format(count_sql, param.person_id, param.identity_id, param.message_type)
     local count = DBUtil:querySingleSql(count_sql);
     if TableUtil:length(count) == 0 then
@@ -63,7 +63,9 @@ local function listFromDb(param)
         local ssdb = SsdbUtil:getDb()
         for i = 1, #list do
             local id = list[i]['id']
-            local count = ssdb.get("social_activity_share_view_.." .. id .. ".._count")
+
+            local count = ssdb:get("social_activity_share_view_" .. id .. "_count")
+            log.debug(count);
             local view_count = 0
             if count and count[1] and string.len(count[1]) > 0 then
                 view_count = tonumber(count[1]);
@@ -82,10 +84,10 @@ end
 local function listOrgFromDb(param)
     local _pagenum = tonumber(param.page_num)
     local _pagesize = tonumber(param.page_size)
-    local list_sql = "SELECT T1.id,T1.title,T1.create_date FROM T_SOCIAL_ACTIVITY_SHARE T1,T_SOCIAL_ACTIVITY_SHARE_ORG T2 WHERE T1.ID = T2.SHARE_ID AND T1.PERSON_ID=%s AND T1.IDENTITY_ID=%s AND T1.MESSAGE_TYPE=%s AND T2.ORG_ID=%s ORDER BY T1.CREATE_DATE DESC"
-    list_sql = string.format(list_sql, param.person_id, param.identity_id, param.message_type, param.orgid)
-    local count_sql = "SELECT count(id)  as totalRow  FROM T_SOCIAL_ACTIVITY_SHARE T1,T_SOCIAL_ACTIVITY_SHARE_ORG T2 WHERE T1.ID = T2.SHARE_ID AND T1.PERSON_ID=%s AND T1.IDENTITY_ID=%s AND T1.MESSAGE_TYPE=%s AND T2.ORG_ID=%s"
-    count_sql = string.format(count_sql, param.person_id, param.identity_id, param.message_type, param.orgid)
+    local list_sql = "SELECT T1.id,T1.title,T1.create_date,t1.person_id,t1.person_name FROM T_SOCIAL_ACTIVITY_SHARE T1,T_SOCIAL_ACTIVITY_SHARE_ORG T2 WHERE T1.ID = T2.SHARE_ID AND T1.MESSAGE_TYPE=%s AND T2.ORG_ID=%s AND IS_DELETE=0 ORDER BY T1.CREATE_DATE DESC"
+    list_sql = string.format(list_sql, param.message_type, param.orgid)
+    local count_sql = "SELECT count(id)  as totalRow  FROM T_SOCIAL_ACTIVITY_SHARE T1,T_SOCIAL_ACTIVITY_SHARE_ORG T2 WHERE T1.ID = T2.SHARE_ID  AND T1.MESSAGE_TYPE=%s AND T2.ORG_ID=%s AND IS_DELETE=0"
+    count_sql = string.format(count_sql, param.message_type, param.orgid)
     local count = DBUtil:querySingleSql(count_sql);
     if TableUtil:length(count) == 0 then
         return nil;
@@ -103,7 +105,7 @@ local function listOrgFromDb(param)
         local ssdb = SsdbUtil:getDb()
         for i = 1, #list do
             local id = list[i]['id']
-            local count = ssdb.get("social_activity_share_view_.." .. id .. ".._count")
+            local count = ssdb:get("social_activity_share_view_" .. id .. "_count")
             local view_count = 0
             if count and count[1] and string.len(count[1]) > 0 then
                 view_count = tonumber(count[1]);
@@ -166,7 +168,7 @@ local function saveToDb(param)
         if param.org_ids and string.len(param.org_ids) > 0 then
             local insert_sql_o = "INSERT INTO T_SOCIAL_ACTIVITY_SHARE_ORG (ORG_ID,IDENTITY_ID,SHARE_ID) VALUES "
             local _orgids = Split(param.org_ids, ",")
-            local _o_value_sql="";
+            local _o_value_sql = "";
             for i = 1, #_orgids do
                 local formatstr = (i == #_orgids and "(%s,%s,%s);") or "(%s,%s,%s),"
                 _o_value_sql = _o_value_sql .. string.format(formatstr, quote(_orgids[i]), quote(param.identity_id), share_id)
@@ -215,13 +217,16 @@ end
 -----------------------------------------------------------------------------
 -- 删除 活动
 local function deleteToDb(id)
+    log.debug(id);
     local db = DBUtil:getDb()
     db:query("START TRANSACTION;")
     local delete_sql = "UPDATE T_SOCIAL_ACTIVITY_SHARE SET IS_DELETE = 1 WHERE ID = " .. id
     local result = db:query(delete_sql)
+    log.debug(result)
     if result.affected_rows > 0 then
         local delete_detail_sql = "UPDATE T_SOCIAL_ACTIVITY_SHARE_DETAIL SET IS_DELETE = 1 WHERE SHARE_ID = " .. id
         local r = db:query(delete_detail_sql)
+        log.debug(r);
         if r then
             db:query("COMMIT;")
         else
@@ -236,27 +241,29 @@ end
 local function deleteOrgToDb(org_id, id)
     local db = DBUtil:getDb()
     db:query("START TRANSACTION;")
-    local delete_org_sql = "DELETE FROM T_SOCIAL_ACTIVITY_SHARE_ORG WHERE ORG_ID=" .. org_id;
+    local delete_org_sql = "DELETE FROM T_SOCIAL_ACTIVITY_SHARE_ORG WHERE ORG_ID=" .. org_id .. " AND SHARE_ID=" .. id;
     local result_o = db:query(delete_org_sql)
-    if result_o.affected_rows > 0 then
-        local delete_sql = "UPDATE T_SOCIAL_ACTIVITY_SHARE SET IS_DELETE = 1 WHERE ID = " .. id
-        local result = db:query(delete_sql)
-        if result.affected_rows > 0 then
-            local delete_detail_sql = "UPDATE T_SOCIAL_ACTIVITY_SHARE_DETAIL SET IS_DELETE = 1 WHERE SHARE_ID = " .. id
-            local r = db:query(delete_detail_sql)
-            if r then
-                db:query("COMMIT;")
-            else
-                db:query("ROLLBACK;");
-                return false;
-            end
-        else
-            db:query("ROLLBACK;");
-            return false;
-        end
-    end
     DBUtil:keepDbAlive(db);
-    return true;
+    if result_o.affected_rows > 0 then
+        --        local delete_sql = "UPDATE T_SOCIAL_ACTIVITY_SHARE SET IS_DELETE = 1 WHERE ID = " .. id
+        --        local result = db:query(delete_sql)
+        --        if result.affected_rows > 0 then
+        --            local delete_detail_sql = "UPDATE T_SOCIAL_ACTIVITY_SHARE_DETAIL SET IS_DELETE = 1 WHERE SHARE_ID = " .. id
+        --            local r = db:query(delete_detail_sql)
+        --            if r then
+        --                db:query("COMMIT;")
+        --            else
+        --                db:query("ROLLBACK;");
+        --                return false;
+        --            end
+        --        else
+        --            db:query("ROLLBACK;");
+        --            return false;
+        --        end
+        return true;
+    end
+
+    return false;
 end
 
 --local function deleteToSSDB(id)
@@ -268,6 +275,8 @@ end
 
 function _M.delete(org_id, id)
     --checkParamIsNull({ id = id })
+    log.debug(id);
+    log.debug(org_id)
     if org_id == nil or string.len(org_id) == 0 then
         return deleteToDb(id);
     else
@@ -319,8 +328,7 @@ function _M.update(param)
     local insert_sql = "INSERT INTO T_SOCIAL_ACTIVITY_SHARE_DETAIL (FILE_ID,SHARE_ID,MEMO,SEQUENCE,STYLE,SOURCE) VALUES "
     local values_sql = ""
     for i = 1, #param.list do
-        local formatstr;
-        formatstr = (i == #param.list and "(%s,%s,%s,%s,%s,%s);") or "(%s,%s,%s,%s,%s,%s),"
+        local formatstr = (i == #param.list and "(%s,%s,%s,%s,%s,%s);") or "(%s,%s,%s,%s,%s,%s),"
         values_sql = values_sql .. string.format(formatstr, quote(param.list[i].file_id), param.id, quote(param.list[i].memo), param.list[i].sequence, quote(param.list[i].style), quote(param.list[i].source))
     end
     local insert_sqls = insert_sql .. values_sql
@@ -354,15 +362,20 @@ end
 -- 通过id查看 、
 function _M.view(id)
     local db = SsdbUtil:getDb();
-    local view_sql = "SELECT R1.TITLE,R1.CONTEXT,R1.ID FROM T_SOCIAL_ACTIVITY_SHARE R1 WHERE R1.ID = " .. id
+    local view_sql = "SELECT R1.TITLE,R1.CONTEXT,R1.ID,R1.PERSON_ID,R1.PERSON_NAME,R1.CREATE_DATE FROM T_SOCIAL_ACTIVITY_SHARE R1 WHERE R1.ID = " .. id
     local view_result = DBUtil:querySingleSql(view_sql);
     local result = { list = {} }
-    local view_detail_sql = "SELECT R.FILE_ID,R.MEMO,R.STYLE,R.CREATE_DATE FROM T_SOCIAL_ACTIVITY_SHARE_DETAIL R WHERE R.SHARE_ID = " .. id .. " AND R.IS_DELETE = 0"
+    local view_detail_sql = "SELECT R.FILE_ID,R.MEMO,R.STYLE,R.CREATE_DATE,R.SOURCE,R.ID FROM T_SOCIAL_ACTIVITY_SHARE_DETAIL R WHERE R.SHARE_ID = " .. id .. " AND R.IS_DELETE = 0"
     if view_result and #view_result > 0 then
         result.id = view_result[1].ID;
         result.context = view_result[1].CONTEXT;
         result.title = view_result[1].TITLE;
-        local count = db.get("social_activity_share_view_.." .. id .. ".._count")
+        result.person_id = view_result[1].PERSON_ID;
+        result.person_name = view_result[1].PERSON_NAME;
+        result.create_date = view_result[1].CREATE_DATE;
+        db:incr("social_activity_share_view_" .. id .. "_count", 1);
+        local count = db:get("social_activity_share_view_" .. id .. "_count")
+        log.debug(count);
         local view_count = 0
         if count and count[1] and string.len(count[1]) > 0 then
             view_count = tonumber(count[1]);
@@ -379,13 +392,47 @@ function _M.view(id)
                 temp.memo = view_detail_result[i].MEMO
                 temp.style = view_detail_result[i].STYLE
                 temp.create_date = view_detail_result[i].CREATE_DATE
+                temp.source = view_detail_result[i].SOURCE
+                temp.id = view_detail_result[i].ID
                 table.insert(result.list, temp);
             end
         end
     end
 
-    db:incr("social_activity_share_view_.." .. id .. ".._count", 1);
+
+
     return result;
+end
+
+--------------------------------------------------------------
+-- 通过共享id获取机构列表。
+function _M.getOrgListByShareId(shareId)
+    checkParamIsNull({
+        shereId = shareId
+    })
+    local sql = "SELECT org_id FROM T_SOCIAL_ACTIVITY_SHARE_ORG WHERE SHARE_ID=%s"
+    sql = string.format(sql, shareId);
+    local result = DBUtil:querySingleSql(sql);
+    return result;
+end
+
+------------------------------------------------------------------
+-- 修改共享.
+function _M.updateShare(identity_id, share_id, ...)
+    local org_ids = { ... }
+    local insert_sql = "INSERT  INTO T_SOCIAL_ACTIVITY_SHARE_ORG (ORG_ID,IDENTITY_ID,SHARE_ID) VALUES ";
+    local values_sql = ""
+    for i = 1, #org_ids do
+        local formatstr = (i == #org_ids and "(%s,%s,%s);") or "(%s,%s,%s),"
+        values_sql = values_sql .. string.format(formatstr, org_ids[i], identity_id, share_id)
+    end
+    local sql = insert_sql .. values_sql;
+    log.debug(sql);
+    local result = DBUtil:querySingleSql(sql);
+    if result.affected_rows > 0 then
+        return true
+    end
+    return false;
 end
 
 return _M;

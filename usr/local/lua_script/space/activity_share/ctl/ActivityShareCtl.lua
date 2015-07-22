@@ -42,7 +42,7 @@ local function save()
     param.message_type = message_type
     param.list = list_t
     param.org_ids = org_ids;
-   -- param.source = source;
+    -- param.source = source;
     local result = service.save(param)
     if result then
         ngx.say(cjson.encode({ success = true }))
@@ -58,15 +58,20 @@ end
 --page_size
 
 local function list()
-    local person_id = request:getStrParam("person_id", true, true) --person_id
-    local identity_id = request:getStrParam("identity_id", true, true) --identity_id
+    local person_id = request:getStrParam("person_id", false, true) --person_id
+    local identity_id = request:getStrParam("identity_id", false, true) --identity_id
     local message_type = request:getStrParam("message_type", false, true) --person_id
     local org_id = request:getStrParam("org_id")
     message_type = ((message_type == nil or string.len(message_type) == 0) and "1") or message_type
     local page_num = request:getStrParam("page_num", true, true) --page_num
     local page_size = request:getStrParam("page_size", true, true) --page_size
-    local param = { person_id = person_id, identity_id = identity_id, message_type = message_type, page_num = page_num, page_size = page_size,orgid = org_id }
+    local param = { person_id = person_id, identity_id = identity_id, message_type = message_type, page_num = page_num, page_size = page_size, orgid = org_id }
     local result = service.list(param)
+    if result then
+        result.success = true;
+    else
+        result.success = false
+    end
     ngx.say(cjson.encode(result))
 end
 
@@ -102,7 +107,7 @@ local function delete()
     local org_id = request:getStrParam("org_id", false, true);
     log.debug(id);
     log.debug(org_id)
-    local result = service.delete(id,org_id)
+    local result = service.delete(org_id,id )
     if result then
         ngx.say(cjson.encode({ success = true }))
     else
@@ -123,7 +128,32 @@ end
 local function view()
     local id = request:getStrParam("id", true, true);
     local result = service.view(id)
+    if result then
+        result.success = true;
+    else
+        result.success = false
+    end
     ngx.say(cjson.encode(result))
+end
+----------------------------------------------------------------------------
+--通过分享id获取orgid列表.
+local function getOrgListByShareId()
+    local id = request:getStrParam("id", true, true);
+    local result = service.getOrgListByShareId(id)
+    ngx.say(cjson.encode(result))
+end
+
+----------------------------------------------------------------------------
+--修改共享.
+local function updateShare()
+    local id = request:getStrParam("id", true, true);
+    local identity_id = request:getStrParam("identity_id", true, true);
+    local org_ids = request:getStrParam("org_ids", true, true);
+    local _org_ids = Split(org_ids,",")
+    local r = {success = false}
+    local result  = service.updateShare(identity_id,id,_org_ids);
+    r.success = result;
+    return r;
 end
 
 --log.debug(context);
@@ -136,7 +166,9 @@ local urls = {
     context .. '/update', update,
     context .. '/delete', delete,
     context .. '/delete_detail', deleteDetail,
-    no_permission_context .. '/view', view
+    no_permission_context .. '/view', view,
+    no_permission_context.. '/org_list' ,getOrgListByShareId,
+    context.. '/update_share' ,updateShare,
 }
 local app = web.application(urls, nil)
 app:start()

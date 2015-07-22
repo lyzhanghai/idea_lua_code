@@ -92,8 +92,6 @@ local function getAttention(personid, identityid, pagesize, pagenum)
     local db = SsdbUtil:getDb();
     local offset, limit, totalRow, totalPage = getCount("space_attention_identityid_" .. identityid .. "_personid_" .. personid, pagesize, pagenum)
     local zResult = db:zrange("space_attention_identityid_" .. identityid .. "_personid_" .. personid, offset, limit)
-
-    log.debug(zResult);
     local result = getPersonInfoByRedis(zResult)
     return result, totalRow, totalPage;
 end
@@ -106,6 +104,21 @@ local function getBAttention(personid, identityid, pagesize, pagenum)
     log.debug(name)
     log.debug(zResult);
     local result = getPersonInfoByRedis(zResult)
+    local key = identityid .. "_" .. personid
+    for i = 1, #result do
+        local _identity_id = result[i]['identity_id']
+        local _person_id = result[i]['personId']
+--        log.debug("identity_id:" .. _identity_id);
+--        log.debug("person_id:" .. _person_id);
+--        log.debug("key :" .. key);
+        local _exists,err = SsdbUtil:getDb():zexists("space_attention_identityid_" .. _identity_id .. "_personid_" .. _person_id, key);
+
+        if _exists then
+            result[i].each_other = true;
+        else
+            result[i].each_other = false;
+        end
+    end
     return result, totalRow, totalPage;
 end
 
@@ -115,8 +128,8 @@ function _M.queryAttention(param)
     checkParamIsNull({
         personid = param.personid,
         identityid = param.identityid,
-        b_personid = param.b_personid,
-        b_identityid = param.b_identityid,
+        --        b_personid = param.b_personid,
+        --        b_identityid = param.b_identityid,
     })
     local result, totalRow, totalPage = getAttention(param.personid, param.identityid, param.page_size, param.page_num)
     return result, totalRow, totalPage
@@ -129,8 +142,8 @@ function _M.queryBAttention(param)
     checkParamIsNull({
         personid = param.personid,
         identityid = param.identityid,
-        b_personid = param.b_personid,
-        b_identityid = param.b_identityid,
+        --        b_personid = param.b_personid,
+        --        b_identityid = param.b_identityid,
     })
     local result, totalRow, totalPage = getBAttention(param.personid, param.identityid, param.page_size, param.page_num)
     return result, totalRow, totalPage
@@ -145,7 +158,7 @@ function _M.get(param)
     --    })
     log.debug(param)
     local db = SsdbUtil:getDb();
-    if param.personid and param.identityid and string.len(param.personid)>0 and string.len(param.identityid) then
+    if param.personid and param.identityid and string.len(param.personid) > 0 and string.len(param.identityid) > 0 then
 
         --是否关注
         local is_attention = db:zexists("space_attention_identityid_" .. param.identityid .. "_personid_" .. param.personid, param.b_identityid .. "_" .. param.b_personid)
@@ -216,6 +229,7 @@ function _M.accesslist_b(personid, identityid, type, pagesize, pagenum)
     local offset, limit, totalRow, totalPage = getCount(name, pagesize, pagenum)
     local zResult = db:zrange(name, offset, limit)
     local result = getPersonInfoByRedis(zResult)
+
     return result, totalRow, totalPage;
 end
 

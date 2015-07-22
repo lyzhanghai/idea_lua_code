@@ -40,8 +40,8 @@ local function query()
     log.debug("查询关注信息.")
     local personid = request:getStrParam("personid", true, true) --关注人id
     local identityid = request:getStrParam("identityid", true, true) --关注人id
-    local b_personid = request:getStrParam("b_personid", true, true) --被关注人id
-    local b_identityid = request:getStrParam("b_identityid", true, true) --被关注人的身份.
+    local b_personid = request:getStrParam("b_personid", false, true) --被关注人id
+    local b_identityid = request:getStrParam("b_identityid", false, true) --被关注人的身份.
     local page_size = request:getNumParam("page_size", false, true) --被关注人的身份.
     local page_num = request:getNumParam("page_num", false, true) --被关注人的身份.
     local result = { success = true, list = {} }
@@ -64,8 +64,8 @@ local function bquery()
     log.debug("查询被关注信息.")
     local personid = request:getStrParam("personid", true, true) --关注人id
     local identityid = request:getStrParam("identityid", true, true) --关注人id
-    local b_personid = request:getStrParam("b_personid", true, true) --被关注人id
-    local b_identityid = request:getStrParam("b_identityid", true, true) --被关注人的身份.
+    local b_personid = request:getStrParam("b_personid", false, true) --被关注人id
+    local b_identityid = request:getStrParam("b_identityid", false, true) --被关注人的身份.
     local page_size = request:getNumParam("page_size", false, true) --被关注人的身份.
     local page_num = request:getNumParam("page_num", false, true) --被关注人的身份.
     local result = { success = true, list = {} }

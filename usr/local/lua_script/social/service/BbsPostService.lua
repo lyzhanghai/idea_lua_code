@@ -132,6 +132,16 @@ function BbsPostService:getPostCount(topicid)
         return 0
     end
 end
+function BbsPostService:postCount(typeId)
+    local db = SsdbUtil:getDb();
+    local topic_typeid_key = "social_bbs_typeid_"..typeId
+    local topicids =  db:get(topic_typeid_key);
+    local count = 0
+    if topicids and topicids[1] and string.len(topicids[1])>0 then
+        count = self:getPostCount(topicids[1])
+    end
+    return count;
+end
 
 --------------------------------------------------------------------------------
 --
@@ -249,6 +259,7 @@ function BbsPostService:getPostsFromDb(bbsid, forumid, topicid, pagenum, pagesiz
     local topic_key = "social_bbs_topicid_" .. topicid
     local topicResult = db:multi_hget(topic_key, unpack(topic_keys))
     --util:log_r_keys(topic_key, "multi_hget")
+    log.debug(topicResult)
     local topic = {}
     if topicResult and #topicResult > 0 then
         local _topic = util:multi_hget(topicResult, topic_keys)
@@ -314,6 +325,12 @@ function BbsPostService:getPostsFromDb(bbsid, forumid, topicid, pagenum, pagesiz
                 end
             end
         end
+    else
+        log.debug("---------------------------------")
+        topic.totalRow = 0;
+        topic.totalPage = 0;
+        topic.pageNumber = pagenum;
+        topic.pageSize = pagesize;
     end
     return topic;
 end

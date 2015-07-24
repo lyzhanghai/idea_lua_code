@@ -21,6 +21,7 @@
                 view_num:查看次数，
                 reply_num：评论次数.
                 create_date:创建日期
+                is_share:是否共享机构
                 id: id
             },{}
 		]

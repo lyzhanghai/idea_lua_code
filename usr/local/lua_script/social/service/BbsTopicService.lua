@@ -110,7 +110,14 @@ function M:saveTopicToSsdb(topic)
     topic.bDelete = 0;
     local key = "social_bbs_topicid_" .. topic.id
     log.debug("保存主题帖的 key:" .. key)
+
     db:multi_hset(key, topic)
+
+
+    local topic_typeid_key = "social_bbs_typeid_"..topic.typeId
+
+    db:set(topic_typeid_key,topic.id);
+
     util:logkeys(key, "multi_hset") --把key记录到日志文件 中.
     --    local topicids_t, err = db:hget("social_bbs_forum_include_topic", "forum_id_" .. topic.forumId)
     --    util:log_r_keys("social_bbs_forum_include_topic", "hget")

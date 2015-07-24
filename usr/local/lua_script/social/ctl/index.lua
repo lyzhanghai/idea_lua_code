@@ -204,8 +204,8 @@ local function topicView()
     local topicid;
     log.debug("messageType :"..messageType);
     log.debug("constant.MESSAGE_TYPE_BBS :"..constant.MESSAGE_TYPE_BBS);
+
     if messageType == constant.MESSAGE_TYPE_BBS then --如果是bbs
-        log.debug("------------------------------------------------------");
         topicid = request:getStrParam("topic_id", true, true)
     else
         local typeId = request:getStrParam("type_id", true, true)
@@ -213,11 +213,12 @@ local function topicView()
         if topicResult and topicResult[1] then
             topicid = topicResult[1]['id']
         else
-            local r = {success=true,reply_list={}}
+            local r = {success=true,totalRow=0,totalPage=0,reply_list={}}
             ngx.say(cjson.encode(r))
             return;
         end
     end
+
     local bbsid = request:getStrParam("bbs_id", false, true)
     local forumid = request:getStrParam("forum_id", false, true)
     local pageNumber = request:getStrParam("pageNumber", true, true)
@@ -330,6 +331,15 @@ local function getPostCount()
     ngx.say(cjson.encode(result))
 end
 
+local function postCount()
+    local type_id = request:getStrParam("type_id", true, true)
+    local result = {success = true }
+    local postService = getService("BbsPostService")
+    local count = postService:postCount(type_id);
+    result.count = count
+    ngx.say(cjson.encode(result))
+end
+
 -------------------------------------------------------------------------------------
 -- 配置url.
 -- 按功能分
@@ -345,6 +355,7 @@ local urls = {
     context .. '/topic/getTopicByUserInfo', getTopicByUserInfo,
     context .. '/post/getPostByUserInfo', getPostByUserInfo,
     context.. '/topic/getPostCount',getPostCount,
+    context.. '/topic/postCount',postCount,
 }
 local app = web.application(urls, nil)
 app:start()

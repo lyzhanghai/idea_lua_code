@@ -23,12 +23,13 @@ local no_permission_context = ngx.var.path_uri_no_permission --无权限的conte
 --File_id
 local function save()
     local title = request:getStrParam("title", true, true) --title
-    local _context = request:getStrParam("context", true, true) --context
+    local _context = request:getStrParam("context", false, true) --context
     local person_id = request:getStrParam("person_id", true, true) --person_id
     local person_name = request:getStrParam("person_name", true, true) --person_name
     local identity_id = request:getStrParam("identity_id", true, true) --identity_id
     local message_type = request:getStrParam("message_type", true, true) --message_type
     local org_ids = request:getStrParam("org_ids", false, true)
+    local seq_id = request:getStrParam("seq_id", true, true)
     --local source = request:getStrParam("source", true, true) --message_type
     local list = request:getStrParam("list", true, true) --list
     log.debug(list);
@@ -42,6 +43,7 @@ local function save()
     param.message_type = message_type
     param.list = list_t
     param.org_ids = org_ids;
+    param.seq_id = seq_id;
     -- param.source = source;
     local result = service.save(param)
     if result then
@@ -78,11 +80,12 @@ end
 local function update()
     local id = request:getStrParam("id", true, true);
     local title = request:getStrParam("title", true, true) --title
-    local _context = request:getStrParam("context", true, true) --context
+    local _context = request:getStrParam("context", false, true) --context
     local person_id = request:getStrParam("person_id", true, true) --person_id
     local person_name = request:getStrParam("person_name", true, true) --person_name
     local identity_id = request:getStrParam("identity_id", true, true) --identity_id
     local message_type = request:getStrParam("message_type", true, true) --message_type
+    local seq_id = request:getStrParam("seq_id", true, true)
     local list = request:getStrParam("list", true, true) --list
     local list_t = cjson.decode(list)
     local param = {}
@@ -94,6 +97,7 @@ local function update()
     param.identity_id = identity_id
     param.message_type = message_type
     param.list = list_t
+    param.seq_id = seq_id;
     local result = service.update(param)
     if result then
         ngx.say(cjson.encode({ success = true }))
@@ -107,7 +111,7 @@ local function delete()
     local org_id = request:getStrParam("org_id", false, true);
     log.debug(id);
     log.debug(org_id)
-    local result = service.delete(org_id,id )
+    local result = service.delete(org_id, id)
     if result then
         ngx.say(cjson.encode({ success = true }))
     else
@@ -135,8 +139,9 @@ local function view()
     end
     ngx.say(cjson.encode(result))
 end
+
 ----------------------------------------------------------------------------
---通过分享id获取orgid列表.
+-- 通过分享id获取orgid列表.
 local function getOrgListByShareId()
     local id = request:getStrParam("id", true, true);
     local result = service.getOrgListByShareId(id)
@@ -144,16 +149,19 @@ local function getOrgListByShareId()
 end
 
 ----------------------------------------------------------------------------
---修改共享.
+-- 修改共享.
 local function updateShare()
     local id = request:getStrParam("id", true, true);
     local identity_id = request:getStrParam("identity_id", true, true);
-    local org_ids = request:getStrParam("org_ids", true, true);
-    local _org_ids = Split(org_ids,",")
-    local r = {success = false}
-    local result  = service.updateShare(identity_id,id,_org_ids);
+    local org_ids = request:getStrParam("org_ids", false, true);
+    local _org_ids;
+    if org_ids and string.len(org_ids) > 0 then
+        _org_ids = Split(org_ids, ",")
+    end
+    local r = { success = false }
+    local result = service.updateShare(identity_id, id, _org_ids);
     r.success = result;
-    return r;
+    ngx.say(cjson.encode(r))
 end
 
 --log.debug(context);
@@ -163,12 +171,12 @@ end
 local urls = {
     context .. '/save', save,
     no_permission_context .. '/list', list,
-    context .. '/update', update,
+    context .. '/update$', update,
     context .. '/delete', delete,
     context .. '/delete_detail', deleteDetail,
     no_permission_context .. '/view', view,
-    no_permission_context.. '/org_list' ,getOrgListByShareId,
-    context.. '/update_share' ,updateShare,
+    no_permission_context .. '/org_list', getOrgListByShareId,
+    context .. '/update_share', updateShare
 }
 local app = web.application(urls, nil)
 app:start()

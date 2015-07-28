@@ -66,10 +66,12 @@ local function listFromDb(param)
         local ssdb = SsdbUtil:getDb()
         for i = 1, #list do
             local id = list[i]['id']
-            local sql = "SELECT * T_SOCIAL_ACTIVITY_SHARE_ORG WHERE SHARE_ID=%s";
-            sql = string.format(sql,shareid);
-            local _olist = db:query(sql)
-            if _olist and TableUtil:length(_olist) > 0 then
+            log.debug(id)
+            local sql = "SELECT COUNT(*) as _COUNT FROM T_SOCIAL_ACTIVITY_SHARE_ORG WHERE SHARE_ID=%s";
+            sql = string.format(sql, id);
+            local _ocount = db:query(sql)
+            log.debug(_ocount);
+            if _ocount and tonumber(_ocount[1]._COUNT) > 0 then
                 list[i]['is_shared'] = true;
             else
                 list[i]['is_shared'] = false;

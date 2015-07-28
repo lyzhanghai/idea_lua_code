@@ -91,7 +91,12 @@ end
 local function getAttention(personid, identityid, pagesize, pagenum)
     local db = SsdbUtil:getDb();
     local offset, limit, totalRow, totalPage = getCount("space_attention_identityid_" .. identityid .. "_personid_" .. personid, pagesize, pagenum)
-    local zResult = db:zrange("space_attention_identityid_" .. identityid .. "_personid_" .. personid, offset, limit)
+--    log.debug("identityid:" .. identityid)
+--    log.debug("personid:" .. personid)
+    local key = "space_attention_identityid_" .. identityid .. "_personid_" .. personid;
+--    log.debug("key:" .. key)
+    local zResult = db:zrange(key, offset, limit)
+--    log.debug(zResult);
     local result = getPersonInfoByRedis(zResult)
     return result, totalRow, totalPage;
 end
@@ -99,10 +104,11 @@ end
 local function getBAttention(personid, identityid, pagesize, pagenum)
     local db = SsdbUtil:getDb();
     local name = "space_b_attention_identityid_" .. identityid .. "_personid_" .. personid;
+--    log.debug(name)
     local offset, limit, totalRow, totalPage = getCount(name, pagesize, pagenum)
     local zResult = db:zrange(name, offset, limit)
-    log.debug(name)
-    log.debug(zResult);
+--    log.debug(name)
+--    log.debug(zResult);
     local result = getPersonInfoByRedis(zResult)
     local key = identityid .. "_" .. personid
     for i = 1, #result do
@@ -110,10 +116,12 @@ local function getBAttention(personid, identityid, pagesize, pagenum)
         local _person_id = result[i]['personId']
 --        log.debug("identity_id:" .. _identity_id);
 --        log.debug("person_id:" .. _person_id);
---        log.debug("key :" .. key);
-        local _exists,err = SsdbUtil:getDb():zexists("space_attention_identityid_" .. _identity_id .. "_personid_" .. _person_id, key);
-
-        if _exists then
+        --        log.debug("key :" .. key);
+        local _exists1, err = SsdbUtil:getDb():zexists("space_attention_identityid_" .. _identity_id .. "_personid_" .. _person_id, key);
+        local _exists2, err = SsdbUtil:getDb():zexists("space_attention_identityid_" .. identityid .. "_personid_" .. personid, _identity_id .. "_" .. _person_id);
+--        log.debug(_exists1)
+--        log.debug(_exists2)
+        if _exists1[1] == "1" and _exists2[1] == "1" then
             result[i].each_other = true;
         else
             result[i].each_other = false;
@@ -125,6 +133,7 @@ end
 --------------------------------------------------------------
 -- 查询关注人
 function _M.queryAttention(param)
+    log.debug(param.personid)
     checkParamIsNull({
         personid = param.personid,
         identityid = param.identityid,
@@ -132,6 +141,7 @@ function _M.queryAttention(param)
         --        b_identityid = param.b_identityid,
     })
     local result, totalRow, totalPage = getAttention(param.personid, param.identityid, param.page_size, param.page_num)
+   -- log.debug(result)
     return result, totalRow, totalPage
 end
 

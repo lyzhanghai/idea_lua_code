@@ -6,6 +6,7 @@
  1. 请求地址：
 
  http://10.10.3.199/dsideal_yy/space/baktools/space_30164_5_data.json?login=1&person_id=30164&identity_id=5
+ http://10.10.3.199/dsideal_yy/space/baktools/space_30164_5_data_no_login.json?login=1&person_id=30164&identity_id=5
 
  2. 参数说明：
 

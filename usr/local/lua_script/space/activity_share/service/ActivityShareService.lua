@@ -49,7 +49,9 @@ local function listFromDb(param)
     list_sql = string.format(list_sql, param.person_id, param.identity_id, param.message_type)
     local count_sql = "SELECT count(id)  as totalRow  FROM T_SOCIAL_ACTIVITY_SHARE WHERE PERSON_ID=%s AND IDENTITY_ID=%s AND MESSAGE_TYPE=%s AND IS_DELETE=0"
     count_sql = string.format(count_sql, param.person_id, param.identity_id, param.message_type)
+    log.debug(count_sql)
     local count = db:query(count_sql);
+    log.debug(count)
     if TableUtil:length(count) == 0 then
         return nil;
     end

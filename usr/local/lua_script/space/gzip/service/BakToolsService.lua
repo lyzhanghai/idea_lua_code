@@ -12,7 +12,7 @@ local SsdbUtil = require("social.common.ssdbutil")
 local TS = require "resty.TS"
 local cjson = require "cjson"
 local baseService = require("space.gzip.service.BakToolsBaseService");
-local TableUtil = require("social.common.table")
+--local TableUtil = require("social.common.table")
 local _M = {}
 
 local function isLogin()
@@ -36,7 +36,9 @@ local function my_yp_info(param, person_id, identity_id, login)
     log.debug("my_yp_info")
     local msg_num = param['msg_num']
 
-    if not isLogin() then
+    local is_Login = isLogin();
+
+    if not is_Login then
         log.debug("重新设置cookie")
         ngx.header['Set-Cookie'] = { 'person_id=' .. person_id .. '; path=/', 'identity_id=' .. identity_id .. '; path=/' }
     end
@@ -52,6 +54,10 @@ local function my_yp_info(param, person_id, identity_id, login)
             cjson.encode_empty_table_as_object(false)
             result_t = cjson.decode(result.body)
         end
+    end
+
+    if not is_Login then
+        ngx.header['Set-Cookie'] = {}
     end
     return result_t;
 end
@@ -117,6 +123,7 @@ end
 
 --- 我的备课
 local function my_beike_info(param, person_id, identity_id, login)
+    log.debug("my_beike_info")
     local nid = param['nid']
     local msg_num = param['msg_num']
     local isroot = param['isroot']
@@ -124,6 +131,7 @@ local function my_beike_info(param, person_id, identity_id, login)
     local bType = (login == "0" and 7) or 0 --未登录是7 登录是0
     local url = "/dsideal_yy/space/getResourceMyList?res_type=2&view=0&bType=" .. bType .. "&rtype=0&nid=" .. nid .. "&is_root=" .. isroot .. "&cnode=1&sort_type=1&sort_num=2&pageSize=" .. msg_num ..
             "&pageNumber=1&scheme_id=" .. scheme_id .. "&beike_type=0&app_type_id=0&person_id=" .. person_id .. "&identity_id=" .. identity_id;
+    log.debug(url)
     local data = ngx.location.capture(url)
     local result_t = {}
     if data.status == 200 then
@@ -135,12 +143,14 @@ end
 
 --- 我的微课.
 local function my_weike_info(param, person_id, identity_id, login)
+    log.debug("my_weike_info start.")
     local nid = param['nid']
     local msg_num = param['msg_num']
     local isroot = param['isroot']
     local scheme_id = param['scheme_id']
     local bType = (login == "0" and 7) or 0 --未登录是7 登录是0
     local url;
+    log.debug(param);
     if identity_id == "5" then
         url = "/dsideal_yy/space/getwkdslist?view=-1&nid=" .. nid ..
                 "&is_root=" .. isroot .. "&cnode=1&sort_type=4&sort_order=2&pageSize=" .. msg_num ..
@@ -153,6 +163,7 @@ local function my_weike_info(param, person_id, identity_id, login)
         end
         url = "/dsideal_yy/ypt/wkds/getPublishWk?nid=0&student_id=" .. person_id .. "&subject_id=0&is_root=0&cnode=0&sort_type=4&sort_order=2&pageSize=" .. msg_num .. "&pageNumber=1&keyword=&scheme_id=0&wk_type=0"
     end
+    log.debug("weike info url = " .. url)
     local data = ngx.location.capture(url)
     local result_t = {}
     if data.status == 200 then
@@ -164,7 +175,9 @@ end
 
 --- 我的作业
 local function homework(param, person_id, identity_id, login)
-    if not isLogin() then --没登录
+    log.debug(login)
+    local is_Login = isLogin();
+    if not is_Login then --没登录
         log.debug("重新设置cookie")
         ngx.header['Set-Cookie'] = { 'person_id=' .. person_id .. '; path=/', 'identity_id=' .. identity_id .. '; path=/' }
     end
@@ -184,12 +197,17 @@ local function homework(param, person_id, identity_id, login)
         log.debug("我的作业，学生请求url.");
         log.debug(url)
     end
-    local data = ngx.location.capture(url)
-    log.debug(data)
+    log.debug("开始调用。");
+    local data, e = ngx.location.capture(url)
+
+
     local result_t = {}
     if data.status == 200 then
         cjson.encode_empty_table_as_object(false)
         result_t = cjson.decode(data.body)
+    end
+    if not is_Login then
+        ngx.header['Set-Cookie'] = { }
     end
     return result_t
 end
@@ -240,6 +258,15 @@ local function_table = {
     studentGames = studentGames, --我的游戏.
 }
 
+local function hasKey(t, cmpKey)
+    for k, _ in pairs(t) do
+        if k == cmpKey then
+            return true
+        end
+    end
+    return false
+end
+
 --解析空间json
 local function parseSpaceJsonAndRequestData(person_id, identity_id, login)
     local db = SsdbUtil:getDb()
@@ -250,15 +277,23 @@ local function parseSpaceJsonAndRequestData(person_id, identity_id, login)
     if json and json[1] and string.len(json[1]) > 0 then
         local jsonResult = cjson.decode(json[1])
         local setting_t = jsonResult['ALL_Setting']
-        for k, v in pairs(setting_t) do
+        for k, _ in pairs(setting_t) do
             local _k = string.sub(k, 1, -7)
             log.debug(_k)
-            local status, _result = pcall(function_table[_k], setting_t[k]['self_setting'], person_id, identity_id, login);
-            log.debug(status)
-            if not status then
-                _result = { success = false, info = "请求数据失败." }
-            end
-            table.insert(result, { [k] = _result }) --返回json装载到table里面
+            local b = hasKey(function_table, _k); --判断是否有此key,如果没有此key跳 出循环.
+            log.debug(b)
+            repeat
+                if not b then
+                    break;
+                end
+                local status, _result = pcall(function_table[_k], setting_t[k]['self_setting'], person_id, identity_id, login);
+                log.debug(status)
+                if not status then
+                    _result = { success = false, info = "请求数据失败." }
+                end
+                result[k] = _result
+            until true
+            --table.insert(result, { [k] = _result }) --返回json装载到table里面
         end
     end
     return result;
@@ -289,21 +324,28 @@ function _M.generateBakToolsJson(person_id, identity_id, login)
     log.debug(last_ts)
     log.debug(nologin_ts)
     log.debug(nologin_last_ts)
-    if ts == nil or string.len(ts) == 0 or last_ts == nil or string.len(last_ts) == 0 or ts ~= last_ts or nologin_ts ~= nologin_last_ts then
-        local result = parseSpaceJsonAndRequestData(person_id, identity_id, login)
+    --or nologin_ts ~= nologin_last_ts
+    if ts == nil or string.len(ts) == 0 or last_ts == nil or string.len(last_ts) == 0 or ts ~= last_ts then
         if login == "1" then
+            local result = parseSpaceJsonAndRequestData(person_id, identity_id, login)
             zipData(result, file_name)
+            local t1 = TS.getTs()
+            db:set("space_personid_" .. person_id .. "_identityid_" .. identity_id .. "_ts", t1)
+            db:set("space_last_personid_" .. person_id .. "_identityid_" .. identity_id .. "_ts", t1)
         end
-        if login == "0" then
-            zipData(result, no_login_file_name)
-        end
-        local t1 =  TS.getTs()
-        db:set("space_personid_" .. person_id .. "_identityid_" .. identity_id .. "_ts", t1)
-        db:set("space_last_personid_" .. person_id .. "_identityid_" .. identity_id .. "_ts", t1)
-        db:set("space_personid_" .. person_id .. "_identityid_" .. identity_id .. "_nologin_ts", t1)
-        db:set("space_last_personid_" .. person_id .. "_identityid_" .. identity_id .. "_nologin_ts",t1)
     else
-        log.debug("不需要重新生成.")
+        log.debug("登录，不需要重新生成.")
+    end
+    if nologin_ts == nil or string.len(nologin_ts) == 0 or nologin_last_ts == nil or string.len(nologin_last_ts) == 0 or nologin_ts ~= nologin_last_ts then
+        if login == "0" then
+            local result = parseSpaceJsonAndRequestData(person_id, identity_id, login)
+            zipData(result, no_login_file_name)
+            local t1 = TS.getTs()
+            db:set("space_personid_" .. person_id .. "_identityid_" .. identity_id .. "_nologin_ts", t1)
+            db:set("space_last_personid_" .. person_id .. "_identityid_" .. identity_id .. "_nologin_ts", t1)
+        end
+    else
+        log.debug("未登录，不需要重新生成.")
     end
 end
 

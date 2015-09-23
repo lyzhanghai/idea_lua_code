@@ -27,7 +27,7 @@ end
 
 local function convertTopic(topic)
     local create_ts = TS.getTs()
-    local typeid =((topic.typeId ==nil or string.len(topic.typeId)==0) and "bbs_"..topic.bbsId) or topic.typeId
+    local typeid = ((topic.typeId == nil or string.len(topic.typeId) == 0) and "bbs_" .. topic.bbsId) or topic.typeId
     local t = {
         ID = topic.id,
         BBS_ID = topic.bbsId,
@@ -113,12 +113,11 @@ function M:saveTopicToSsdb(topic)
 
     db:multi_hset(key, topic)
 
-
-    local topic_typeid_key = "social_bbs_typeid_"..topic.typeId
-
-    db:set(topic_typeid_key,topic.id);
-
-    util:logkeys(key, "multi_hset") --把key记录到日志文件 中.
+    if topic.typeId ~= nil then
+        local topic_typeid_key = "social_bbs_typeid_" .. topic.typeId
+        db:set(topic_typeid_key, topic.id);
+        util:logkeys(key, "multi_hset") --把key记录到日志文件 中.
+    end
     --    local topicids_t, err = db:hget("social_bbs_forum_include_topic", "forum_id_" .. topic.forumId)
     --    util:log_r_keys("social_bbs_forum_include_topic", "hget")
     --    local topicids = ""
@@ -314,6 +313,9 @@ end
 -- @param #string sortType 排序类型.
 -- @result #table  {list=list,totalRow=totalRow,totalPage=totalPage}
 function M:getTopicsFromSsdb(bbsid, forumid, categoryid, searchText, filterDate, sortType, best, messageType, pagenum, pagesize)
+
+    log.debug("getTopicsFromSsdb")
+
     if bbsid == nil or string.len(bbsid) == 0 then
         error("bbs id 不能为空");
     end
@@ -570,7 +572,7 @@ end
 -- @param #string pagenum
 -- @param #string pagesize
 -- @return #table
-function M:getTopicListByUserInfo(personId, identityId,messageType, pagenum, pagesize)
+function M:getTopicListByUserInfo(personId, identityId, messageType, pagenum, pagesize)
     if personId == nil or string.len(personId) == 0 then
         error("person_id不能为空.")
     end
@@ -595,8 +597,8 @@ function M:getTopicListByUserInfo(personId, identityId,messageType, pagenum, pag
     sort = sort .. "ts desc;"
     local personIdFilter = "filter=person_id," .. personId .. ";"
     local identityIdFilter = "filter=identity_id," .. identityId .. ";"
-    local messageTypeFilter =  "filter=message_type," .. messageType .. ";"
-    queryStr = string.format(queryStr, personIdFilter, identityIdFilter,messageTypeFilter, sort);
+    local messageTypeFilter = "filter=message_type," .. messageType .. ";"
+    queryStr = string.format(queryStr, personIdFilter, identityIdFilter, messageTypeFilter, sort);
     queryStr = ngx.quote_sql_str(queryStr)
     log.debug("queryStr :" .. queryStr)
     sql = string.format(sql, queryStr)

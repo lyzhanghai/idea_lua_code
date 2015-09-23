@@ -45,6 +45,10 @@ local function save()
     param.org_ids = org_ids;
     param.seq_id = seq_id;
     -- param.source = source;
+    --修改ts值.
+    local interactiveToolsUpdateTsService = require("space.gzip.service.InteractiveToolsUpdateTsService")
+    interactiveToolsUpdateTsService.updateTs(person_id,identity_id)
+
     local result = service.save(param)
     if result then
         ngx.say(cjson.encode({ success = true }))
@@ -98,6 +102,11 @@ local function update()
     param.message_type = message_type
     param.list = list_t
     param.seq_id = seq_id;
+
+    --修改ts值.
+    local interactiveToolsUpdateTsService = require("space.gzip.service.InteractiveToolsUpdateTsService")
+    interactiveToolsUpdateTsService.updateTs(person_id,identity_id)
+
     local result = service.update(param)
     if result then
         ngx.say(cjson.encode({ success = true }))
@@ -131,7 +140,11 @@ end
 
 local function view()
     local id = request:getStrParam("id", true, true);
-    local result = service.view(id)
+    local isAdmin = request:getStrParam("is_admin", false, true);
+    if string.len(isAdmin)==0 then
+        isAdmin = false;
+    end
+    local result = service.view(id,isAdmin)
     if result then
         result.success = true;
     else

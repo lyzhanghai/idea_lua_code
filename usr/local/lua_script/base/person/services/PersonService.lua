@@ -295,5 +295,104 @@ end
 
 _PersonService.getTeachClassesBySubject = getTeachClassesBySubject;
 -- -------------------------------------------------------------------------
+--[[
+    描述： 根绝班级ID ，获取当前学期下所有的老师
+    作者： 胡悦 2015-07-07
+    参数： calssId  班级ID
+    返回值：存储结果的table
+]]
+local function getTeacherByClass(self,classId)
+  
+  local personModel = require "base.person.model.PersonInfoModel";
+  
+  local teacherTable  = personModel: getTeacherByClass(classId);
+    if not teacherTable then
+        return { success=false, info="获取数据失败" };
+    end
+    
+    return { success=true, teacher_list=teacherTable };
 
+end
+_PersonService.getTeacherByClass = getTeacherByClass;
+-- -------------------------------------------------------------------------
+
+--[[
+    描述： 获取和我一个学校的老师
+    作者： 胡悦 2015-07-25
+    参数： identityId  身份Id
+		   personId 教师ID
+    返回值：存储结果的table
+]]
+local function getMyColleagues(self,identityId,personId)
+	local personModel = require "base.person.model.PersonInfoModel";
+  
+    local teacherTable  = personModel: getMyColleagues(identityId,personId);
+    if not teacherTable then
+        return { success=false, info="获取数据失败" };
+    end
+    
+    return { success=true, teacher_list=teacherTable };
+
+end
+_PersonService.getMyColleagues = getMyColleagues;
+-- -------------------------------------------------------------------------
+
+--[[
+    描述： 获取和我一个班级的同学
+    作者： 胡悦 2015-07-25
+    参数：   studentId 学生Id
+    返回值：存储结果的table
+]]
+local function getMyClassmates(self,studentId)
+	local personModel = require "base.person.model.PersonInfoModel";
+  
+    local studentTable  = personModel: getMyClassmates(studentId);
+    if not studentTable then
+        return { success=false, info="获取数据失败" };
+    end
+    
+    return { success=true, student_list=studentTable };
+
+end
+_PersonService.getMyClassmates = getMyClassmates;
+-- -------------------------------------------------------------------------
+--[[
+    描述： 根据老师ID获取我的学生
+    作者： 胡悦 2015-07-25
+    参数：    personId 教师Id
+    返回值：存储结果的table
+]]
+local function getMyStudents(self,personId)
+	local personModel = require "base.person.model.PersonInfoModel";
+  
+    local studentTable  = personModel: getMyStudents(personId);
+    if not studentTable then
+        return { success=false, info="获取数据失败" };
+    end
+    
+    return { success=true, student_list=studentTable };
+
+end
+_PersonService.getMyStudents = getMyStudents;
+-- -------------------------------------------------------------------------
+
+--[[
+    描述： 根据学生ID获取我的老师
+    作者： 胡悦 2015-07-25
+    参数：    studentId 学生ID
+    返回值：存储结果的table
+]]
+local function getMyTeachers(self,studentId)
+	local personModel = require "base.person.model.PersonInfoModel";
+  
+    local teacherTable  = personModel: getMyTeachers(studentId);
+    if not teacherTable then
+        return { success=false, info="获取数据失败" };
+    end
+    
+    return { success=true, teacher_list=teacherTable };
+
+end
+_PersonService.getMyTeachers = getMyTeachers;
+-- -------------------------------------------------------------------------
 return _PersonService;

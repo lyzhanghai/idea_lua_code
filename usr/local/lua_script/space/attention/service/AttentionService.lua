@@ -9,6 +9,7 @@
 local log = require("social.common.log")
 local RedisUtil = require("social.common.redisutil")
 local SsdbUtil = require("social.common.ssdbutil")
+local friendService = require("space.services.FriendService")
 local TS = require "resty.TS"
 local _M = {}
 
@@ -91,12 +92,12 @@ end
 local function getAttention(personid, identityid, pagesize, pagenum)
     local db = SsdbUtil:getDb();
     local offset, limit, totalRow, totalPage = getCount("space_attention_identityid_" .. identityid .. "_personid_" .. personid, pagesize, pagenum)
---    log.debug("identityid:" .. identityid)
---    log.debug("personid:" .. personid)
+    --    log.debug("identityid:" .. identityid)
+    --    log.debug("personid:" .. personid)
     local key = "space_attention_identityid_" .. identityid .. "_personid_" .. personid;
---    log.debug("key:" .. key)
-    local zResult = db:zrange(key, offset, limit)
---    log.debug(zResult);
+    --    log.debug("key:" .. key)
+    local zResult = db:zrrange(key, offset, limit)
+    --    log.debug(zResult);
     local result = getPersonInfoByRedis(zResult)
     return result, totalRow, totalPage;
 end
@@ -104,23 +105,23 @@ end
 local function getBAttention(personid, identityid, pagesize, pagenum)
     local db = SsdbUtil:getDb();
     local name = "space_b_attention_identityid_" .. identityid .. "_personid_" .. personid;
---    log.debug(name)
+    --    log.debug(name)
     local offset, limit, totalRow, totalPage = getCount(name, pagesize, pagenum)
-    local zResult = db:zrange(name, offset, limit)
---    log.debug(name)
---    log.debug(zResult);
+    local zResult = db:zrrange(name, offset, limit)
+    --    log.debug(name)
+    --    log.debug(zResult);
     local result = getPersonInfoByRedis(zResult)
     local key = identityid .. "_" .. personid
     for i = 1, #result do
         local _identity_id = result[i]['identity_id']
         local _person_id = result[i]['personId']
---        log.debug("identity_id:" .. _identity_id);
---        log.debug("person_id:" .. _person_id);
+        --        log.debug("identity_id:" .. _identity_id);
+        --        log.debug("person_id:" .. _person_id);
         --        log.debug("key :" .. key);
         local _exists1, err = SsdbUtil:getDb():zexists("space_attention_identityid_" .. _identity_id .. "_personid_" .. _person_id, key);
         local _exists2, err = SsdbUtil:getDb():zexists("space_attention_identityid_" .. identityid .. "_personid_" .. personid, _identity_id .. "_" .. _person_id);
---        log.debug(_exists1)
---        log.debug(_exists2)
+        --        log.debug(_exists1)
+        --        log.debug(_exists2)
         if _exists1[1] == "1" and _exists2[1] == "1" then
             result[i].each_other = true;
         else
@@ -141,7 +142,7 @@ function _M.queryAttention(param)
         --        b_identityid = param.b_identityid,
     })
     local result, totalRow, totalPage = getAttention(param.personid, param.identityid, param.page_size, param.page_num)
-   -- log.debug(result)
+    -- log.debug(result)
     return result, totalRow, totalPage
 end
 
@@ -204,10 +205,31 @@ function _M.get(param)
     else
         result.access_quantity = 0
     end
-    db:incr("space_attention_access_" .. param.type .. "_quantity_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid, 1); --访问量加1
+    if param.personid and param.identityid and string.len(param.personid) > 0 and string.len(param.identityid) > 0 then --如果是自已访问。
+        db:incr("space_attention_access_" .. param.type .. "_quantity_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid, 1); --访问量加1
+    end
+
+    local friendsCount = friendService:getFriendsCountByPersonIdAndIdentityId(param.b_personid, param.b_identityid); --好友数。
+
+    -- log.debug(friendsCount);
+
+    result.friendsCount = friendsCount;
+
+    local groupModel = require "base.group.model.GroupModel";
+
+    local result1, returnjson = groupModel.queryMyGroupByPersonId("", param.b_personid, param.b_identityid, 1);
 
 
-
+    if not result1 then
+        result.groupSum = "0"
+    else
+        result.groupSum = returnjson.groupSum
+    end
+    local isFriend = false;
+    if param.personid and param.identityid and string.len(param.personid) > 0 and string.len(param.identityid) > 0 and param.b_personid and param.b_identityid and string.len(param.b_personid) > 0 and string.len(param.b_identityid) > 0 then
+        isFriend = friendService:isFriend(param.personid, param.identityid, param.b_personid, param.b_identityid)
+    end
+    result.isFriend = isFriend;
     return result;
 end
 
@@ -226,7 +248,7 @@ function _M.accesslist(personid, identityid, type, pagesize, pagenum)
     local name = "space_attention_access_" .. type .. "_identityid_" .. identityid .. "_personid_" .. personid;
     log.debug(name)
     local offset, limit, totalRow, totalPage = getCount(name, pagesize, pagenum)
-    local zResult = db:zrange(name, offset, limit)
+    local zResult = db:zrrange(name, offset, limit)
     log.debug(zResult)
     local result = getPersonInfoByRedis(zResult)
     return result, totalRow, totalPage;
@@ -237,7 +259,7 @@ function _M.accesslist_b(personid, identityid, type, pagesize, pagenum)
     local name = "space_attention_b_access_" .. type .. "_identityid_" .. identityid .. "_personid_" .. personid
     log.debug(name)
     local offset, limit, totalRow, totalPage = getCount(name, pagesize, pagenum)
-    local zResult = db:zrange(name, offset, limit)
+    local zResult = db:zrrange(name, offset, limit)
     local result = getPersonInfoByRedis(zResult)
 
     return result, totalRow, totalPage;

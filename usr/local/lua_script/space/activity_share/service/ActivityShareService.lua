@@ -49,13 +49,13 @@ local function listFromDb(param)
     list_sql = string.format(list_sql, param.person_id, param.identity_id, param.message_type)
     local count_sql = "SELECT count(id)  as totalRow  FROM T_SOCIAL_ACTIVITY_SHARE WHERE PERSON_ID=%s AND IDENTITY_ID=%s AND MESSAGE_TYPE=%s AND IS_DELETE=0"
     count_sql = string.format(count_sql, param.person_id, param.identity_id, param.message_type)
-    log.debug(count_sql)
+    --log.debug(count_sql)
     local count = db:query(count_sql);
-    log.debug(count)
+    --log.debug(count)
     if TableUtil:length(count) == 0 then
         return nil;
     end
-    log.debug("获取主题帖列表.count:" .. count[1].totalRow);
+    --log.debug("获取主题帖列表.count:" .. count[1].totalRow);
     local totalRow = count[1].totalRow
     local totalPage = math.floor((totalRow + _pagesize - 1) / _pagesize)
     local offset = _pagesize * _pagenum - _pagesize
@@ -64,25 +64,35 @@ local function listFromDb(param)
     log.debug("获取活动列表.list sql:" .. list_sql);
     local list = db:query(list_sql);
     log.debug(list);
+
     if list then
         local ssdb = SsdbUtil:getDb()
         for i = 1, #list do
             local id = list[i]['id']
-            log.debug(id)
+            local view_detail_sql = "SELECT R.FILE_ID FROM T_SOCIAL_ACTIVITY_SHARE_DETAIL R WHERE R.SHARE_ID =%s AND R.IS_DELETE = 0 ORDER BY R.SEQ_ID LIMIT 0,1"
             local sql = "SELECT COUNT(*) as _COUNT FROM T_SOCIAL_ACTIVITY_SHARE_ORG WHERE SHARE_ID=%s";
             sql = string.format(sql, id);
             local _ocount = db:query(sql)
-            log.debug(_ocount);
+           -- log.debug(_ocount);
             if _ocount and tonumber(_ocount[1]._COUNT) > 0 then
                 list[i]['is_shared'] = true;
             else
                 list[i]['is_shared'] = false;
             end
             local count = ssdb:get("social_activity_share_view_" .. id .. "_count")
-            log.debug(count);
+            --log.debug(count);
             local view_count = 0
             if count and count[1] and string.len(count[1]) > 0 then
                 view_count = tonumber(count[1]);
+            end
+            log.debug(id)
+            view_detail_sql = string.format(view_detail_sql, id);
+
+
+            log.debug(view_detail_sql)
+            local detail_result = db:query(view_detail_sql)
+            if detail_result and detail_result[1] then
+                list[i]['file_id'] = detail_result[1]['FILE_ID'];
             end
             list[i]['view_count'] = view_count;
         end
@@ -94,6 +104,8 @@ end
 
 local function listFromSSDB(param)
 end
+
+
 
 
 local function listOrgFromDb(param)
@@ -116,16 +128,24 @@ local function listOrgFromDb(param)
     log.debug("获取活动列表.list sql:" .. list_sql);
     local list = DBUtil:querySingleSql(list_sql);
     log.debug(list);
+    local view_detail_sql = "SELECT R.FILE_ID FROM T_SOCIAL_ACTIVITY_SHARE_DETAIL R WHERE R.SHARE_ID =%s AND R.IS_DELETE = 0 AND R.SEQ_ID=1"
     if list then
         local ssdb = SsdbUtil:getDb()
         for i = 1, #list do
             local id = list[i]['id']
+            view_detail_sql = string.format(view_detail_sql, id);
+            local detail_result = DBUtil:querySingleSql(view_detail_sql);
+
             local count = ssdb:get("social_activity_share_view_" .. id .. "_count")
             local view_count = 0
             if count and count[1] and string.len(count[1]) > 0 then
                 view_count = tonumber(count[1]);
             end
+            log.debug(detail_result)
             list[i]['view_count'] = view_count;
+            -- if detail_result and detail_result[1] then
+            list[i]['file_id'] = detail_result[1]['FILE_ID'];
+            -- end
         end
     end
     local result = { list = list, totalRow = totalRow, totalPage = totalPage, pageNum = _pagenum, pageSize = _pagesize }
@@ -376,7 +396,7 @@ end
 
 ------------------------------------------------------------------------------------
 -- 通过id查看 、
-function _M.view(id)
+function _M.view(id, isadmin)
     local db = SsdbUtil:getDb();
     local view_sql = "SELECT R1.TITLE,R1.CONTEXT,R1.ID,R1.PERSON_ID,R1.PERSON_NAME,R1.CREATE_DATE,R1.SEQ_ID FROM T_SOCIAL_ACTIVITY_SHARE R1 WHERE R1.ID = " .. id
     local view_result = DBUtil:querySingleSql(view_sql);
@@ -390,7 +410,10 @@ function _M.view(id)
         result.person_name = view_result[1].PERSON_NAME;
         result.create_date = view_result[1].CREATE_DATE;
         result.seq_id = view_result[1].SEQ_ID;
-        db:incr("social_activity_share_view_" .. id .. "_count", 1);
+        log.debug(isadmin)
+        if not isadmin then
+            db:incr("social_activity_share_view_" .. id .. "_count", 1);
+        end
         local count = db:get("social_activity_share_view_" .. id .. "_count")
         log.debug(count);
         local view_count = 0

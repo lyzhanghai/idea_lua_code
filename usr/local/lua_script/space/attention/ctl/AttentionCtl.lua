@@ -23,6 +23,10 @@ local function save()
     local b_personid = request:getStrParam("b_personid", true, true) --被关注人id
     local b_identityid = request:getStrParam("b_identityid", true, true) --被关注人的身份.
     local r = service.save({ personid = personid, identityid = identityid, b_personid = b_personid, b_identityid = b_identityid })
+
+    local service = require("space.gzip.service.InteractiveToolsUpdateTsService")
+    service.updateTs(personid,identityid)
+    service.updateTs(b_personid,b_identityid)
     local result = {}
     result.success = true;
     if not r then
@@ -163,7 +167,11 @@ local function delete()
     local identityid = request:getStrParam("identityid", true, true) --关注人id
     local b_personid = request:getStrParam("b_personid", true, true) --被关注人id
     local b_identityid = request:getStrParam("b_identityid", true, true) --被关注人的身份.
+
     local r = service.delete({ personid = personid, identityid = identityid, b_personid = b_personid, b_identityid = b_identityid })
+    local service = require("space.gzip.service.InteractiveToolsUpdateTsService")
+    service.updateTs(personid,identityid)
+    service.updateTs(b_personid,b_identityid)
     if not r then
         ngx.say(cjson.encode({ success = false }))
         return;

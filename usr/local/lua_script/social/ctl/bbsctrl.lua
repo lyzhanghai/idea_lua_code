@@ -102,6 +102,11 @@ local function topicSave()
 
     BbsService:updatePostForumToDb(forumid, topicid)
     BbsService:updatePostForumToSsdb(forumid, topicid)
+
+    --修改ts值.
+    local service = require("space.gzip.service.InteractiveToolsUpdateTsService")
+    service.updateTs(personid,identityid)
+
     rr.id = topic.id;
     rr.success = true
     ngx.print(cjson.encode(rr))

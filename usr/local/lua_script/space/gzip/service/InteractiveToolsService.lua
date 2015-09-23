@@ -20,22 +20,24 @@ local function hasKey(t, cmpKey)
     return false
 end
 
-local function messageBoard(param)
+local function messageBoard(param, person_id, identity_id)
     local postService = require("social.service.BbsPostService")
     local topicService = require("social.service.BbsTopicService")
-    local topicResult = topicService:getTopicByTypeIdAndType(param.typeId, param.messageType)
+
+    local topicResult = topicService:getTopicByTypeIdAndType("spacemessageBoard" .. person_id .. identity_id, 2)
     local topicid;
     if topicResult and topicResult[1] then
         topicid = topicResult[1]['id']
     else
         return {};
     end
-
-    local result = postService:getPostsFromDb(nil, nil, topicid, param.pageNumber, param.pageSize, 1)
+    local page_size = 5;
+    local page_num = 1;
+    local result = postService:getPostsFromDb(nil, nil, topicid, page_num, page_size, 1)
     topicService:updateTopicViewCountToDb(topicid)
     topicService:updateTopicViewCountToSsdb(topicid)
-    cjson.encode_empty_table_as_object(false)
-    return cjson.decode(result);
+
+    return result
 end
 
 --data:{"random_num":creatRandomNum(),
@@ -50,14 +52,13 @@ local function activeShare(param, person_id, identity_id, org_id)
     local service = require("space.activity_share.service.ActivityShareService")
     local person_id = ((tonumber(identity_id) > 100) and "") or person_id
     local identity_id = ((tonumber(identity_id) > 100) and "") or identity_id
-    local page_size = 5;
+    local page_size = 10;
     local page_num = 1;
     local org_id = ((tonumber(identity_id) > 100) and org_id) or ""
     local message_type = 1
     local param_t = { person_id = person_id, identity_id = identity_id, message_type = message_type, page_num = page_num, page_size = page_size, orgid = org_id }
     local result = service.list(param_t)
-    cjson.encode_empty_table_as_object(false)
-    return cjson.decode(result);
+    return result;
 end
 
 --
@@ -75,10 +76,9 @@ local function myPost(param, person_id, identity_id)
     local identityId = identity_id
     local messageType = 1
     local pageNumber = 1
-    local pageSize = 5
+    local pageSize = tonumber(param.post_num)
     local result = topicService:getTopicListByUserInfo(personId, identityId, messageType, pageNumber, pageSize)
-    cjson.encode_empty_table_as_object(false)
-    return cjson.decode(result);
+    return result;
 end
 
 --data:{"random_num":creatRandomNum(),
@@ -92,7 +92,7 @@ local function myVisitor(param, person_id, identity_id)
     local type = 1;
     local personid = person_id;
     local identityid = identity_id;
-    local page_size = 10;
+    local page_size = 16;
     local page_num = 1;
     local service = require("space.attention.service.AttentionService")
     local list, totalRow, totalPage = service.accesslist(personid, identityid, type, page_size, page_num)
@@ -102,8 +102,7 @@ local function myVisitor(param, person_id, identity_id)
     result.total_page = totalPage
     result.page_size = page_size
     result.page_num = page_num
-    cjson.encode_empty_table_as_object(false)
-    return cjson.decode(result);
+    return result;
 end
 
 
@@ -114,7 +113,7 @@ local function myAttention(param, person_id, identity_id)
     local identityid = identity_id --关注人id
     --    local b_personid = param.b_personid --被关注人id
     --    local b_identityid = param.b_identityid --被关注人的身份.
-    local page_size = 5 --被关注人的身份.
+    local page_size = 16 --被关注人的身份.
     local page_num = 1 --被关注人的身份.
     local result = { list = {} }
     local list, totalRow, totalPage = service.queryAttention({ personid = personid, identityid = identityid, page_size = tonumber(page_size), page_num = tonumber(page_num) })
@@ -123,8 +122,7 @@ local function myAttention(param, person_id, identity_id)
     result.total_page = totalPage
     result.page_size = page_size
     result.page_num = page_num
-    cjson.encode_empty_table_as_object(false)
-    return cjson.decode(result);
+    return result;
 end
 
 local function myFriends(param, person_id, identity_id)
@@ -143,11 +141,11 @@ end
 --函数table.
 local function_table = {
     messageBoard = messageBoard, --留言版.
-    activeShare = activeShare, --活动分享
-    myPost = myPost, --我的贴子
-    myVisitor = myVisitor, --访问记录
-    myAttention = myAttention, --关注
-    myFriends = myFriends --我的好友.
+    activeShare = activeShare,
+    myPost = myPost,
+    myVisitor = myVisitor,
+    myAttention = myAttention,
+    myFriends = myFriends
 }
 
 --压缩数据
@@ -156,7 +154,7 @@ local function zipData(result, file_name)
     cjson.encode_empty_table_as_object(false)
     file:write(cjson.encode(result))
     file:close()
-    os.execute("gzip -f -9 /usr/local/openresty/nginx/html/interactive/" .. file_name .. " > temp" .. file_name .. ".gz")
+    os.execute("gzip -f -9 /usr/local/openresty/nginx/html/interactive/" .. file_name)
 end
 
 --解析空间json
@@ -180,9 +178,13 @@ local function parseSpaceJsonAndRequestData(person_id, identity_id, org_id)
                 end
                 local status, _result = pcall(function_table[_k], setting_t[k]['self_setting'], person_id, identity_id, org_id);
                 log.debug(status)
+                log.debug(_result);
                 if not status then
                     _result = { success = false, info = "请求数据失败." }
+                else
+                    _result.success = true
                 end
+
                 result[k] = _result
             until true
             --table.insert(result, { [k] = _result }) --返回json装载到table里面

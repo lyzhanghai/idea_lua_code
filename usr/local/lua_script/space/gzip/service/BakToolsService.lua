@@ -181,8 +181,9 @@ local function homework(param, person_id, identity_id, login)
         log.debug("重新设置cookie")
         ngx.header['Set-Cookie'] = { 'person_id=' .. person_id .. '; path=/', 'identity_id=' .. identity_id .. '; path=/' }
     end
-    local url = "/dsideal_yy/ypt/zy/zylistteacher"
+
     if identity_id == "5" then
+        local url = "/dsideal_yy/ypt/zy/zylistteacher"
         local nid = param['nid']
         local scheme_id = param['scheme_id']
         local pageSize = param['this_num']
@@ -192,8 +193,9 @@ local function homework(param, person_id, identity_id, login)
         log.debug("我的作业，老师请求url.");
         log.debug(url)
     elseif identity_id == "6" then
+        local url = "/dsideal_yy/ypt/zy/zyliststudent"
         local pageSize = param['this_num']
-        url = url .. string.format("?subject_id=-1&sort_order=2&pageNumber=1&pageSize=%s&keyword=", pageSize);
+        url = url .. string.format("?subject_id=-1&sort_order=2&pageNumber=1&pageSize=%s&keyword=&is_root=1&cnode=1&scheme_id=-1", pageSize);
         log.debug("我的作业，学生请求url.");
         log.debug(url)
     end
@@ -290,6 +292,8 @@ local function parseSpaceJsonAndRequestData(person_id, identity_id, login)
                 log.debug(status)
                 if not status then
                     _result = { success = false, info = "请求数据失败." }
+                else
+                    _result.success = true
                 end
                 result[k] = _result
             until true
@@ -302,11 +306,11 @@ end
 
 --压缩数据
 local function zipData(result, file_name)
-    local file = io.open("/usr/local/openresty/nginx/html/" .. file_name, "w")
+    local file = io.open("/usr/local/openresty/nginx/html/baktools/" .. file_name, "w")
     cjson.encode_empty_table_as_object(false)
     file:write(cjson.encode(result))
     file:close()
-    os.execute("gzip -f -9 /usr/local/openresty/nginx/html/" .. file_name .. " > temp" .. file_name .. ".gz")
+    os.execute("gzip -f -9 /usr/local/openresty/nginx/html/baktools/" .. file_name)
 end
 
 function _M.generateBakToolsJson(person_id, identity_id, login)

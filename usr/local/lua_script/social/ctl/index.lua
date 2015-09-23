@@ -160,13 +160,14 @@ local function topicSearchList()
     local messageType = request:getStrParam('message_type', false, true)
     local pageNumber = request:getStrParam("pageNumber", true, true)
     local pageSize = request:getStrParam("pageSize", true, true)
-    local searchText = request:getStrParam("searchText", true, true)
+    local searchText = request:getStrParam("searchText", false, true)
     log.debug("searchText 搜所内容:")
     log.debug(searchText)
-    searchText = ngx.decode_base64(searchText)
-    log.debug("searchText 搜所内容base64解码后:")
-    log.debug(searchText)
-
+    if searchText and string.len(searchText)>0 then
+        searchText = ngx.decode_base64(searchText)
+        log.debug("searchText 搜所内容base64解码后:")
+        log.debug(searchText)
+    end
     local bbsService = getService("BbsService")
     local forumIds = bbsService:getForumIdsById(bbsid);--获取未删除的forum的id.
     local forumIdsStr = table.concat(forumIds,",")

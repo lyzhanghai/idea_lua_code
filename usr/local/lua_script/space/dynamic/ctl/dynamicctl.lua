@@ -14,7 +14,7 @@ local request = require("social.common.request")
 local context = ngx.var.path_uri --有权限的context.
 local log = require("social.common.log")
 local service = require("space.dynamic.service.DynamicService")
------------------------------------------a-------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
 -- 保存动态信息.
 local function save()
     local person_id = request:getStrParam("person_id", true, true)

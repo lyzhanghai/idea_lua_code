@@ -10,9 +10,9 @@
 --ngx.header.content_type = "text/plain;charset=utf-8"
 local say = ngx.say
 local len = string.len
-local insert = table.insert
-local quote = ngx.quote_sql_str
 
+
+local log = require("social.common.log")
 --require model
 local mysqllib = require "resty.mysql"
 local cjson = require "cjson"
@@ -116,7 +116,8 @@ end
 --1省2市3区县4校5分校6部门7班级
 --显示省市区
 local function getExcellence(record_id)
-	local querySql = "select ifnull(group_concat(t.org_type),0) as org_type from t_social_space_excellence t where t.record_id="..record_id
+	local querySql = "select ifnull(group_concat(t.org_type),0) as org_type from t_social_space_excellence t where t.identityid=1 and t.record_id="..record_id
+    log.debug(querySql)
 	local result, err = mysql:query(querySql)
 	if not result then
 		error()
@@ -164,10 +165,10 @@ local function arraySort(arrays)
 end
 
 
-local function getExcellenceQuery(org_id,org_type,province,city,district,pageNumber,pageSize)
-	local queryCountSql="SELECT count(*) as totalRow FROM (SELECT t.id,t.record_id,t.org_id, GROUP_CONCAT(t.org_type) AS org_type FROM t_social_space_excellence t WHERE 1=1 and t.identityid = 1 and org_id="..org_id
+local function getExcellenceQuery(org_id,org_type,schooltype,province,city,district,pageNumber,pageSize)
+	local queryCountSql="SELECT count(*) as totalRow FROM (SELECT t.id,t.record_id,t.org_id, GROUP_CONCAT(t.org_type) AS org_type FROM t_social_space_excellence t WHERE 1=1 and t.identityid = 1"
 	--local querySql = "select record_id,org_type from (select t.id,t.record_id,t.org_id ,group_concat(t.org_type) as org_type from t_scoial_space_excellence t group by record_id) t1 where t1.org_id="..org_id.." and t1.org_type="
-	local querySql = "SELECT record_id,org_type,org_id FROM (SELECT t.id,t.record_id,t.org_id, GROUP_CONCAT(t.org_type) AS org_type FROM t_social_space_excellence t WHERE 1=1 and t.identityid = 1 and org_id="..org_id
+	local querySql = "SELECT record_id,org_type,org_id FROM (SELECT t.id,t.record_id,t.org_id, GROUP_CONCAT(t.org_type) AS org_type FROM t_social_space_excellence t WHERE 1=1 and t.identityid = 1"
 	local whereIdSql = ""
 
 	if org_type == "1" then
@@ -178,23 +179,27 @@ local function getExcellenceQuery(org_id,org_type,province,city,district,pageNum
 		whereIdSql = " AND t.districtid="..org_id
 	end
 
-	local whereSql = " AND t.org_type in ("
+
 	local t = {}
 	-- local tabs = {}
-	if province=="1" then
-		table.insert(t,1)
-	end
-	if city=="1" then
-		table.insert(t,2)
-	end
-	if district=="1" then
-		table.insert(t,3)
-	end
-	whereSql = whereSql ..convertTableToString(t)..")"
-	if province=="0" and city=="0" and  district=="0" then whereSql="" end
-	local  groupSql = " GROUP BY record_id) t1"
-	querySql=querySql..whereIdSql..whereSql..groupSql
-	queryCountSql=queryCountSql..whereIdSql..whereSql..groupSql
+    if province=="1" then
+        table.insert(t,"t1.org_type like '%1%'")
+    end
+    if city=="1" then
+        table.insert(t,"t1.org_type like '%2%'")
+    end
+    if district=="1" then
+        table.insert(t,"t1.org_type like '%3%'")
+    end
+
+    local wheresql = "where "..table.concat(t," and ")
+
+	if province=="0" and city=="0" and  district=="0" then wheresql="" end
+	local  groupSql = " GROUP BY record_id) t1 "
+	querySql=querySql..whereIdSql..groupSql..wheresql
+    log.debug(querySql)
+	queryCountSql=queryCountSql..whereIdSql..groupSql..wheresql
+    log.debug(queryCountSql)
 	ngx.log(ngx.ERR,"queryCountSql=================",queryCountSql)
 	local count,err1 = mysql:query(queryCountSql)
 	ngx.log(ngx.ERR,"count[1].totalRow=================",count[1].totalRow)
@@ -214,7 +219,6 @@ end
 
 
 
-
 -- 从接口中取出进行迭代
 local function iteratorData(queryResult,resResult,orgType,pageNumber,pageSize)
 	if queryResult then
@@ -224,6 +228,8 @@ local function iteratorData(queryResult,resResult,orgType,pageNumber,pageSize)
 		resResult.totalPage = queryResult.totalPage;
 		resResult.totalRow = queryResult.totalRow;
 		resResult.school_list={}
+
+
 		local schoollist = queryResult.school_list;
 		if schoollist~=nil and #schoollist>0 then
 			ngx.log(ngx.ERR,"for start.......schoollist.......",cjson.encode(queryResult))
@@ -236,11 +242,13 @@ local function iteratorData(queryResult,resResult,orgType,pageNumber,pageSize)
 				resTempSchoolResult.province_id=schoollist[j].province_id
 				resTempSchoolResult.city_id = schoollist[j].city_id
 				resTempSchoolResult.district_id = schoollist[j].district_id
-
+                log.debug(schoollist[j].school_id..":"..schoollist[j].school_type)
 				local status,schoolRes = pcall(getExcellence,schoollist[j].school_id)
 				resTempSchoolResult.excellent_group = {}
 				if schoolRes~=nil and #schoolRes>0 then
+                    log.debug(schoollist[j].school_type)
 					if schoolRes[1].org_type~="0" then
+                        log.debug(schoollist[j].school_id)
 						resTempSchoolResult.excellent_group = arraySort(Split(schoolRes[1].org_type,","));
 					end
 				end
@@ -311,7 +319,7 @@ local function getSpaceSchoolData()
 		ngx.log(ngx.ERR,"返回resResult：",cjson.encode(resResult))
 	else
 
-		local ids,totalRow,totalPage,err = getExcellenceQuery(org_id,org_type,province,city,district,pageNumber,pageSize)
+		local ids,totalRow,totalPage,err = getExcellenceQuery(org_id,org_type,school_type,province,city,district,pageNumber,pageSize)
 		if ids~=nil and #ids>0 then
 			ngx.log(ngx.ERR,"============",cjson.encode(ids))
 			local id_table = {}

@@ -52,13 +52,36 @@ if not ok then
     return
 end
 
---update
-local isql = "update t_social_gallery_picture set picture_name = "..quote(picture_name).." where id = "..quote(picture_id)
-local iresutl, err = mysql:query(isql)
-if not iresutl then
+--select
+local ssql = "select resource_id from t_social_gallery_picture where id = "..quote(picture_id)
+local sresult, err = mysql:query(ssql)
+if not sresult then
     say("{\"success\":false,\"info\":\""..err.."\"}")
     return
 end
+local resource_id = sresult[1] and sresult[1].resource_id or nil
+--ngx.log(ngx.ERR, "======"..resource_id)
+if resource_id then
+    local aService = require "space.services.PersonAndOrgBaseInfoService"
+    local rt = aService:getResById1(resource_id)
+    --ngx.log(ngx.ERR, "======"..rt[1].resource_id_int)
+    if rt and rt[1] and rt[1].resource_id_int and len(rt[1].resource_id_int) > 0 then
+        --去修改资源名称
+        local res = ngx.location.capture("/dsideal_yy/ypt/resource/updateResName", {
+            method = ngx.HTTP_POST,
+            body = "obj_id_int="..rt[1].resource_id_int.."&obj_name="..picture_name.."&type_id=1"
+        });
+    end
+end
+
+--update
+local isql = "update t_social_gallery_picture set picture_name = "..quote(picture_name).." where id = "..quote(picture_id)
+local iresult, err = mysql:query(isql)
+if not iresult then
+    say("{\"success\":false,\"info\":\""..err.."\"}")
+    return
+end
+
 
 --return
 local rr = {}

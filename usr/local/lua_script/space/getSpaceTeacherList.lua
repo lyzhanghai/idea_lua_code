@@ -8,6 +8,7 @@ local say = ngx.say
 local len = string.len
 local insert = table.insert
 local quote = ngx.quote_sql_str
+local log = require("social.common.log")
 
 --require model
 local mysqllib = require "resty.mysql"
@@ -112,7 +113,7 @@ end
 --1省2市3区县4校5分校6部门7班级
 --显示省市区
 local function getExcellence(record_id)
-    local querySql = "select ifnull(group_concat(t.org_type),0) as org_type from t_social_space_excellence t where t.record_id="..record_id
+    local querySql = "select ifnull(group_concat(t.org_type),0) as org_type from t_social_space_excellence t where t.identityid = 3 and t.record_id="..record_id
     local result, err = mysql:query(querySql)
     if not result then
         error()
@@ -176,26 +177,28 @@ local function getExcellenceQuery(org_id,org_type,province,city,district,school,
         whereIdSql = " AND t.schoolid="..org_id
     end
 
-    local whereSql = " AND t.org_type in ("
     local t = {}
     -- local tabs = {}
     if province=="1" then
-        table.insert(t,1)
+        table.insert(t,"t1.org_type like '%1%'")
     end
     if city=="1" then
-        table.insert(t,2)
+        table.insert(t,"t1.org_type like '%2%'")
     end
     if district=="1" then
-        table.insert(t,3)
+        table.insert(t,"t1.org_type like '%3%'")
     end
     if school=="1" then
-        table.insert(t,4)
+        table.insert(t,"t1.org_type like '%4%'")
     end
-    whereSql = whereSql ..convertTableToString(t)..")"
-    if province=="0" and city=="0" and  district=="0" and school=="0" then whereSql="" end
-    local  groupSql = " GROUP BY record_id) t1"
-    querySql=querySql..whereIdSql..whereSql..groupSql
-    queryCountSql=queryCountSql..whereIdSql..whereSql..groupSql
+    local wheresql = "where "..table.concat(t," and ")
+    if province=="0" and city=="0" and  district=="0" and school=="0" then wheresql="" end
+    local  groupSql = " GROUP BY record_id) t1 "
+    querySql=querySql..whereIdSql..groupSql..wheresql
+
+    log.debug(querySql);
+    queryCountSql=queryCountSql..whereIdSql..groupSql..wheresql
+    log.debug(queryCountSql);
     ngx.log(ngx.ERR,"queryCountSql=================",queryCountSql)
     local count,err1 = mysql:query(queryCountSql)
     ngx.log(ngx.ERR,"count[1].totalRow=================",count[1].totalRow)
@@ -206,6 +209,9 @@ local function getExcellenceQuery(org_id,org_type,province,city,district,school,
     local offset = pageSize*pageNumber - pageSize
     local limit = pageSize
     querySql = querySql.." LIMIT "..offset..","..pageSize
+
+    log.debug(querySql);
+    log.debug(queryCountSql);
 
     ngx.log(ngx.ERR,"querySql:"..querySql)
     local result, err = mysql:query(querySql)

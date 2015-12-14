@@ -224,7 +224,7 @@ local function topicView()
     local forumid = request:getStrParam("forum_id", false, true)
     local pageNumber = request:getStrParam("pageNumber", true, true)
     local pageSize = request:getStrParam("pageSize", true, true)
-    local r = postService:getPostsFromDb(bbsid, forumid, topicid, pageNumber, pageSize,sort)
+    local r = postService:getPostsFromDb(bbsid, forumid, topicid, pageNumber, pageSize,sort,messageType)
     log.debug(r);
     topicService:updateTopicViewCountToDb(topicid)
     topicService:updateTopicViewCountToSsdb(topicid)

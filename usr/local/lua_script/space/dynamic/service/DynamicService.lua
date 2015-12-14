@@ -9,7 +9,7 @@
 local log = require("social.common.log")
 local SsdbUtil = require("social.common.ssdbutil")
 local TS = require "resty.TS"
---local TableUtil = require("social.common.table")
+local TableUtil = require("social.common.table")
 local DBUtil = require "common.DBUtil";
 local quote = ngx.quote_sql_str
 local util = require("social.common.util")
@@ -30,11 +30,11 @@ local _M = {}
 -- @param string pi_id person_id+identity_id
 
 --
---- local personService = require "base.person.services.PersonService";
---- local result  = personService:getMyStudents(30317);
---- local result  = personService:getMyColleagues(5,30250);
---- local result  = personService:getMyClassmates(6);
---- local result  = personService:getMyTeachers(6);
+--local personService = require "base.person.services.PersonService";
+--- - local result  = personService:getMyStudents(30317);
+---- local result  = personService:getMyColleagues(5,30250);
+---- local result  = personService:getMyClassmates(6);
+---- local result  = personService:getMyTeachers(6);
 
 local constant = {
     COLLEAGUES = 1, --同事

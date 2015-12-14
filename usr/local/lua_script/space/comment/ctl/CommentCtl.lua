@@ -11,8 +11,10 @@ local request = require("social.common.request")
 local context = ngx.var.path_uri
 local log = require("social.common.log")
 local http = require "resty.http"
+local cjson = require "cjson"
 local function getComment()
     local url = request:getStrParam("url", true, true)
+    url = ngx.unescape_uri(url)
     log.debug(url);
     local hc = http:new()
     local ok, code, headers, status, body = hc:request {
@@ -28,8 +30,10 @@ local function getComment()
         ngx.say("{\"success\": false,\"code\":\"" .. code .. "\"}");
         return;
     end
+    local result = {success=true};
+    result.body = body;
 
-    ngx.say(body);
+    ngx.say(cjson.encode(result));
 end
 
 -- 配置url.

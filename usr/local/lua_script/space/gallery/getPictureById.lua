@@ -10,6 +10,7 @@ local quote = ngx.quote_sql_str
 
 --require model
 local cjson = require "cjson"
+local ssdblib = require "resty.ssdb"
 local mysqllib = require "resty.mysql"
 
 --get args
@@ -50,6 +51,35 @@ if not ok then
     return
 end
 
+--ssdb
+local ssdb = ssdblib:new()
+local ok, err = ssdb:connect(v_ssdb_ip, v_ssdb_port)
+if not ok then
+    say("{\"success\":false,\"info\":\""..err.."\"}")
+    return
+end
+
+local function loadResInfo(result)
+    if result and #result > 0 then
+        for i = 1, #result do
+            local resourceId = result[i]['resource_id'];
+            --ngx.log(ngx.ERR, "照片对应的资源id" .. resourceId)
+            if resourceId and string.len(resourceId) > 0 then
+                local keys = {"thumb_id", "resource_format", "file_id","for_urlencoder_url","for_iso_url","url_code"}
+                local hr = ssdb:multi_hget("resource_" .. resourceId,unpack(keys) )
+                if hr and hr[1] ~= "ok" and hr[1] ~= "not_find" then
+                    result[i].for_urlencoder_url = hr[8] or ""
+                    result[i].for_iso_url = hr[10] or ""
+                    result[i].url_code = hr[12] or ""
+                    result[i].thumb_id = hr[2] or ""
+                    result[i].resource_format = hr[4] or ""
+                    result[i].file_id = hr[6] or ""
+                end
+            end
+        end
+    end
+end
+
 --select
 local isql = "select * from t_social_gallery_picture where id = "..quote(picture_id)
 local iresutl, err = mysql:query(isql)
@@ -57,6 +87,7 @@ if not iresutl then
     say("{\"success\":false,\"info\":\""..err.."\"}")
     return
 end
+loadResInfo(result)
 
 --return
 local rr = {}

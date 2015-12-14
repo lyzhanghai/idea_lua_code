@@ -5,6 +5,7 @@ local RedisUtil = require("social.common.redisutil")
 local SsdbUtil = require("social.common.ssdbutil")
 local util = require("social.common.util")
 local quote = ngx.quote_sql_str
+local cjson = require "cjson"
 local _M = {}
 
 --------------------------------------------------------------------
@@ -15,6 +16,13 @@ local function checkParamIsNull(t)
         end
     end
 end
+
+local function encodeURI(s)
+    s = string.gsub(s, "([^%w%.%- ])", function(c) return string.format("%%%02X", string.byte(c)) end)
+    return string.gsub(s, " ", "+")
+end
+
+
 
 ---------------------------------------------------------------
 -- 创建视频文件夹
@@ -166,6 +174,47 @@ function _M.createVideo(personId, identityId, folderId, videoName, fileId, fileS
     end
 end
 
+
+
+local function reloadResourceM3U8Info(result)
+    if result then
+        if TableUtil:length(result) > 0 then
+            local db = SsdbUtil:getDb()
+
+            for i = 1, #result do
+                local resourceId = result[i]['resource_id'];
+                log.debug("在redis中获取 资源信息.key: resource_" .. resourceId)
+                local keys = { "m3u8_status", "m3u8_url", "thumb_id", "width", "height", "resource_format", "file_id", "for_urlencoder_url", "for_iso_url", "resource_title", "resource_id_int" }
+                local resRecord = db:multi_hget("resource_" .. resourceId, unpack(keys))
+                log.debug(resRecord)
+                if resRecord then
+                    local res = util:multi_hget(resRecord, keys)
+                    local m3u8_status = tostring(res.m3u8_status)
+                    local m3u8_url = tostring(res.m3u8_url)
+                    local thumb_id = tostring(res.thumb_id)
+                    local width = tostring(res.width)
+                    local height = tostring(res.height)
+                    local resource_format = tostring(res.resource_format)
+                    local file_id = tostring(res.file_id)
+                    local url_code = encodeURI(res.resource_title)
+                    local resource_id_int = tostring(res.resource_id_int)
+                    result[i].for_urlencoder_url = res.for_urlencoder_url
+                    result[i].for_iso_url = res.for_iso_url
+                    result[i].url_code = url_code
+                    result[i].m3u8_status = m3u8_status
+                    result[i].m3u8_url = m3u8_url
+                    result[i].thumb_id = thumb_id
+                    result[i].width = width
+                    result[i].height = height
+                    result[i].resource_format = resource_format
+                    result[i].file_id = file_id
+                    result[i].resource_id_int = resource_id_int
+                end
+            end
+        end
+    end
+end
+
 -----------------------------------------------------------------
 -- 编辑视频文件信息.
 -- @param #string video_id：照片id
@@ -179,45 +228,35 @@ function _M.editVideo(videoId, videoName, description)
     if description == nil or string.len(description) == 0 then
         description = "DESCRIPTION"
     end
-    local sql = "UPDATE T_SOCIAL_VIDEO SET VIDEO_NAME=%s,DESCRIPTION=%s WHERE ID=%d"
-    sql = string.format(sql, quote(videoName), quote(description), videoId)
-    local result = DBUtil:querySingleSql(sql);
-    return result;
-end
+
+    local query_sql = "SELECT *  FROM T_SOCIAL_VIDEO WHERE ID=%d";
+    query_sql = string.format(query_sql, videoId);
+    local query_result = DBUtil:querySingleSql(query_sql);
+    reloadResourceM3U8Info(query_result)
+    if TableUtil:length(query_result) > 0 then
+        local resource_id_int = query_result[1]['resource_id_int'];
+        if resource_id_int and string.len(resource_id_int) > 0 then
+            local url = "/dsideal_yy/ypt/resource/updateResName";
 
 
 
-local function reloadResourceM3U8Info(result)
-    if result then
-        if TableUtil:length(result) > 0 then
-            local db = SsdbUtil:getDb()
+            local data = ngx.location.capture(url, {
+                method = ngx.HTTP_POST,
+                body = "obj_id_int="..resource_id_int.."&obj_name="..videoName.."&type_id=1"
+            });
+            log.debug(data)
+            local body = cjson.decode(data.body)
 
-            for i = 1, #result do
-                local resourceId = result[i]['resource_id'];
-                log.debug("在redis中获取 资源信息.key: resource_" .. resourceId)
-                local keys = {"m3u8_status", "m3u8_url", "thumb_id", "width", "height", "resource_format", "file_id"}
-                local resRecord = db:multi_hget("resource_" .. resourceId,unpack(keys) )
-                 log.debug(resRecord)
-                if resRecord ~= ngx.null then
-                    local res = util:multi_hget(resRecord, keys)
-                    local m3u8_status = tostring(res.m3u8_status)
-                    local m3u8_url = tostring(res.m3u8_url)
-                    local thumb_id = tostring(res.thumb_id)
-                    local width = tostring(res.width)
-                    local height = tostring(res.height)
-                    local resource_format = tostring(res.resource_format)
-                    local file_id = tostring(res.file_id)
-                    result[i].m3u8_status = m3u8_status
-                    result[i].m3u8_url = m3u8_url
-                    result[i].thumb_id = thumb_id
-                    result[i].width = width
-                    result[i].height = height
-                    result[i].resource_format = resource_format
-                    result[i].file_id = file_id
-                end
+            log.debug(body.success)
+            if data.status == 200 and body.success then
+                local sql = "UPDATE T_SOCIAL_VIDEO SET VIDEO_NAME=%s,DESCRIPTION=%s WHERE ID=%d"
+                sql = string.format(sql, quote(videoName), quote(description), videoId)
+                local result = DBUtil:querySingleSql(sql);
+                return result
             end
         end
     end
+    return nil;
 end
 
 -----------------------------------------------------------------
@@ -259,7 +298,7 @@ function _M.deleteVideo(ids, folder_id)
 end
 
 
-local function calculatePage(pageNumber,pageSize,totalRow)
+local function calculatePage(pageNumber, pageSize, totalRow)
     local _pagenum = tonumber(pageNumber)
     local _pagesize = tonumber(pageSize)
     local totalRow = totalRow
@@ -268,8 +307,9 @@ local function calculatePage(pageNumber,pageSize,totalRow)
         _pagenum = totalPage
     end
     local offset = _pagesize * _pagenum - _pagesize
-    return offset,_pagesize,totalPage
+    return offset, _pagesize, totalPage
 end
+
 -----------------------------------------------------------------
 -- 获取视频列表.
 -- @param #string Folder_id：文件夹id
@@ -289,11 +329,11 @@ function _M.getVideoList(folderId, pageNumber, pageSize)
         return false;
     end
     log.debug("获取视频列表.count:" .. count[1].totalRow);
-    local offset,_pagesize,totalPage = calculatePage(pageNumber,pageSize,count[1].totalRow);
+    local offset, _pagesize, totalPage = calculatePage(pageNumber, pageSize, count[1].totalRow);
     list_sql = list_sql .. " LIMIT " .. offset .. "," .. _pagesize
     log.debug("获取视频列表.list sql:" .. list_sql);
     local list = DBUtil:querySingleSql(list_sql);
-    local result = {totalRow = count[1].totalRow, totalPage = totalPage, pageNumber = pageNumber, pageSize = pageSize }
+    local result = { totalRow = count[1].totalRow, totalPage = totalPage, pageNumber = pageNumber, pageSize = pageSize }
     --log.debug(type(list[1]))
     if list and list[1] then
         log.debug("获取视频列表.list :");

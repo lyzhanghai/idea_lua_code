@@ -10,6 +10,7 @@ local TS = require "resty.TS"
 local cjson = require "cjson"
 local date = require("social.common.date")
 local log = require("social.common.log")
+local constant = require("social.common.constant")
 local BbsPostService = {
 }
 local db = {
@@ -238,7 +239,7 @@ end
 -- @param #string pagenum 页.
 -- @param #string pagesize 每页显示条数.
 -- @result #table  {list=list,totalRow=totalRow,totalPage=totalPage}
-function BbsPostService:getPostsFromDb(bbsid, forumid, topicid, pagenum, pagesize,sort)
+function BbsPostService:getPostsFromDb(bbsid, forumid, topicid, pagenum, pagesize,sort,messagetype)
 --    if bbsid == nil or string.len(bbsid) == 0 then
 --        error("bbs id 不能为空");
 --    end
@@ -284,7 +285,11 @@ function BbsPostService:getPostsFromDb(bbsid, forumid, topicid, pagenum, pagesiz
         local bbsidFilter = ((bbsid == nil or string.len(bbsid) == 0) and "") or "filter=bbs_id," .. bbsid .. ";"
         local forumidFilter =((forumid == nil or string.len(forumid) == 0) and "") or "filter=forum_id," .. forumid .. ";"
         local topicidFilter = "filter=topic_id," .. topicid .. ";"
-        local filter = bbsidFilter .. forumidFilter .. topicidFilter
+        local bdeleteFilter = ""
+        if messagetype ~= constant.MESSAGE_TYPE_BBS then --如果是bbs
+            bdeleteFilter = "filter=b_delete,0;"
+        end
+        local filter = bbsidFilter .. forumidFilter .. topicidFilter..bdeleteFilter
         local orderStr = "attr_asc:ts;";
         if sort == "1" then
             orderStr =  "attr_desc:ts;";

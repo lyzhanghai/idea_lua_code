@@ -1,0 +1,6 @@
+   #启动
+        /usr/local/sphinx/bin/searchd -c /usr/local/sphinx/etc/csft_blog_article.conf
+        #创建索引
+        /usr/local/sphinx/bin/indexer -c /usr/local/sphinx/etc/csft_blog_article.conf --rotate --all
+        #停止
+        /usr/local/sphinx/bin/searchd -c /usr/local/sphinx/etc/csft_blog_article.conf --stop

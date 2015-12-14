@@ -31,6 +31,7 @@ local identity_id = args["identity_id"]
 local folder_id = args["folder_id"]
 local picture_name = args["picture_name"]
 local file_id = args["file_id"]
+local resource_id = args["resource_info_id"]
 if not person_id or len(person_id) == 0 or
 	not identity_id or len(identity_id) == 0 or
 	not folder_id or len(folder_id) == 0 or
@@ -59,8 +60,8 @@ if not ok then
 end
 
 --insert
-local isql = "insert into t_social_gallery_picture(person_id, identity_id, picture_name, create_time, folder_id, file_id) values ("..
-    quote(person_id)..","..quote(identity_id)..","..quote(picture_name)..",now(),"..quote(folder_id)..","..quote(file_id)..")"
+local isql = "insert into t_social_gallery_picture(person_id, identity_id, picture_name, create_time, folder_id, file_id, resource_id) values ("..
+    quote(person_id)..","..quote(identity_id)..","..quote(picture_name)..",now(),"..quote(folder_id)..","..quote(file_id)..","..quote(resource_id)..")"
 ngx.log(ngx.ERR,"===="..isql)
 local iresutl, err = mysql:query(isql)
 if not iresutl then

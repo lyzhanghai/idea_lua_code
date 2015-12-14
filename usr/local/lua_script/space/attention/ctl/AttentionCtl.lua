@@ -22,6 +22,7 @@ local function save()
     local identityid = request:getStrParam("identityid", true, true) --关注人id
     local b_personid = request:getStrParam("b_personid", true, true) --被关注人id
     local b_identityid = request:getStrParam("b_identityid", true, true) --被关注人的身份.
+
     local r = service.save({ personid = personid, identityid = identityid, b_personid = b_personid, b_identityid = b_identityid })
 
     local service = require("space.gzip.service.InteractiveToolsUpdateTsService")
@@ -180,6 +181,18 @@ local function delete()
 end
 
 
+------------------------------------------------------------------------------------------------------------------------
+---查询是否此人关注
+local function isAttention()
+    local personid = request:getStrParam("personid", true, true) --关注人id
+    local identityid = request:getStrParam("identityid", true, true) --关注人id
+    local bpersonid = request:getStrParam("b_personid", true, true) --被关注人id
+    local bidentityid = request:getStrParam("b_identityid", true, true) --被关注人的身份.
+    local r = service.isAttention( personid, identityid,bpersonid,bidentityid)
+    local result = {success = true,isattention=r}
+    ngx.say(cjson.encode(result))
+end
+
 -- 配置url.
 -- 按功能分
 local urls = {
@@ -190,7 +203,8 @@ local urls = {
     -- no_permission_context .. '/access', access,
     no_permission_context .. '/list_access', accesslist,
     no_permission_context .. '/blist_access', baccesslist,
-    context .. '/cancel', delete
+    context .. '/cancel', delete,
+    no_permission_context..'/is_attention',isAttention,
 }
 local app = web.application(urls, nil)
 app:start()

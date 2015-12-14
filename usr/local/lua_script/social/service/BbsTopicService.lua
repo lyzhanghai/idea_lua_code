@@ -621,7 +621,7 @@ function M:getTopicListByUserInfo(personId, identityId, messageType, pagenum, pa
     if res then
         for i = 1, #res do
             local key = "social_bbs_topicid_" .. res[i]["id"]
-            local keys = { "id", "bbsId", "title", "personId", "personName", "createTime", "replyerTime", "replyerPersonName", "forumId" }
+            local keys = { "id", "bbsId", "title", "personId", "personName", "createTime", "replyerTime", "replyerPersonName", "forumId","viewCount" }
             local _result = db:multi_hget(key, unpack(keys))
             if _result and #_result > 0 then
                 local _topic = util:multi_hget(_result, keys)
@@ -635,6 +635,7 @@ function M:getTopicListByUserInfo(personId, identityId, messageType, pagenum, pa
                 t.replyer_time = _topic.replyerTime
                 t.replyer_person_name = _topic.replyerPersonName
                 t.forum_id = _topic.forumId
+                t.view_count = _topic.viewCount
                 table.insert(topic.list, t)
             end
         end

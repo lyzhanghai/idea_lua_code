@@ -297,7 +297,7 @@ function BbsService:getBbsById(bbsid)
                 --util:logData("获取分区信息:");
                 --util:logData(partition);
                 local _partition = {}
-                if partition and #partition > 0 then
+                if partition and #partition > 0 and partition[1]~='ok' then
                     --util:logData(partition);
                     _partition.id = partition[2];
                     _partition.bbs_id = partition[4];

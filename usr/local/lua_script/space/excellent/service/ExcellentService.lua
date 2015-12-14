@@ -9,6 +9,7 @@ local DBUtil = require "common.DBUtil";
 local SsdbUtil = require("social.common.ssdbutil")
 local cjson = require "cjson"
 local log = require("social.common.log")
+local TableUtil = require("social.common.table")
 --
 --管理者空间获取优秀教师
 --通过多个机构id与机构type获取多个
@@ -94,22 +95,35 @@ local function localClassList(ids, org_types, logo_urls)
 end
 
 local function localTeacherList(ids, org_types, logo_urls)
-    log.debug(ids)
-    local personService = require "base.person.services.PersonService";
+    --log.debug(ids)
+--    local personService = require "base.person.services.PersonService";
+--
+--    local personPageList = personService:getPersonByIds(ids);
+   -- log.debug(personPageList)
+    local param = {};
+    for i=1,#ids do
+        local temp = {}
+        temp.person_id = ids[i];
+        temp.identity_id = 5;
+        table.insert(param,temp);
+    end
 
-    local personPageList = personService:getPersonByIds(ids);
+    local personService = require "space.services.PersonAndOrgBaseInfoService";
+    local personPageList = personService:getPersonNameByPersonIdAndIdentityIdTable(param);
+
     log.debug(personPageList)
+
     local result = {}
     if personPageList then
         for i = 1, #personPageList do
             local restemp = {}
             restemp.name = personPageList[i].person_name
-            restemp.id = personPageList[i].person_id
+            restemp.id = personPageList[i].personId
             restemp.org_type = org_types[i]
             for j = 1, #ids do
                 -- ngx.log(ngx.ERR,"开始遍历 id::::",ids[j])
                 -- ngx.log(ngx.ERR,"ids===================================>ids[j]是否等于schoolPageList[i].school_id:  ",schoolPageList[i].school_id==ids[j])
-                if personPageList[i].person_id == ids[j] then
+                if personPageList[i].personId == ids[j] then
                     --  ngx.log(ngx.ERR,"ids===================================>logo_urls[j]:  ",logo_urls[j])
                     restemp.logo_file_id = logo_urls[j]
                     break;
@@ -146,21 +160,41 @@ local function localStudentList(ids, org_types, logo_urls)
     return result;
 end
 
-function _M.getExcellence(org_ids, org_types, identity_id, limit)
-
-    log.debug(org_ids);
+function _M.getExcellence(org_ids, org_types, identity_id, limit,pagenum,pagesize)
+    local _pagenum = tonumber(pagenum)
+    local _pagesize = tonumber(pagesize)
+   -- log.debug(org_ids);
     local resResult = { list = {} }
-    local orStr = splitOrStr(org_ids, org_types, identity_id);
-    local querySql = "select t.record_id,t.org_type from t_social_space_excellence  t where 1=1 AND " .. orStr .. " limit " .. limit
-    local queryCountSql = "select count(*) total_row from t_social_space_excellence  t where 1=1 AND " .. orStr
     local db = DBUtil:getDb()
+
+    local orStr = splitOrStr(org_ids, org_types, identity_id);
+    log.debug("orStr======="..orStr);
+    local queryCountSql = "select count(*) as totalRow from t_social_space_excellence  t where 1=1 AND " .. orStr
+    local queryCountResult, err = db:query(queryCountSql);
+    if TableUtil:length(queryCountResult) == 0 then
+        return nil;
+    end
+    log.debug(queryCountResult[1].totalRow);
+    local totalRow = queryCountResult[1].totalRow
+    local totalPage=0
+    local querySql = ""
+    if string.len(limit)>0 then
+        querySql = "select t.record_id,t.org_type from t_social_space_excellence  t where 1=1 AND " .. orStr .. " limit " .. limit
+    else
+        totalPage = math.floor((totalRow + _pagesize - 1) / _pagesize)
+        local offset = _pagesize * _pagenum - _pagesize
+        querySql = "select t.record_id,t.org_type from t_social_space_excellence  t where 1=1 AND " .. orStr
+        querySql = querySql .. " LIMIT " .. offset .. "," .. _pagesize
+    end
+
+
     log.debug(querySql)
     local queryResult, err = db:query(querySql)
     if not queryResult then
         error()
     end
-    local queryCountResult, err = db:query(queryCountSql);
-    log.debug(queryCountResult)
+
+   -- log.debug(queryCountResult)
     if queryResult then
 
         local table_ids = {}
@@ -180,9 +214,9 @@ function _M.getExcellence(org_ids, org_types, identity_id, limit)
                 info_key = "space_ajson_personbaseinfo_" .. queryResult[i]["record_id"] .. "_6";
             end
             local ssdb = SsdbUtil:getDb()
-          --  log.debug(info_key)
+            --  log.debug(info_key)
             local logoResult = ssdb:get(info_key)
-          --  log.debug(logoResult)
+            --  log.debug(logoResult)
             if logoResult and logoResult[1] and string.len(logoResult[1]) > 0 then
                 local jsonObj = cjson.decode(logoResult[1])
                 if identity_id == 1 then
@@ -195,13 +229,13 @@ function _M.getExcellence(org_ids, org_types, identity_id, limit)
                     logo_url = jsonObj.space_avatar_fileid
                 end
             end
-            log.debug(queryResult[i]["record_id"]);
+           -- log.debug(queryResult[i]["record_id"]);
             table.insert(table_ids, queryResult[i]["record_id"])
             table.insert(_org_types, queryResult[i]["org_type"])
             table.insert(logo_urls, logo_url)
         end
         if table_ids and #table_ids > 0 then
-            log.debug(identity_id)
+           -- log.debug(identity_id)
             if identity_id == 1 then
                 resResult.list = localSchoolList(table_ids, _org_types, logo_urls)
             elseif identity_id == 2 then
@@ -212,11 +246,19 @@ function _M.getExcellence(org_ids, org_types, identity_id, limit)
             elseif identity_id == 4 then
                 resResult.list = localStudentList(table_ids, _org_types, logo_urls)
             end
-            log.debug(resResult);
+            --  log.debug(resResult);
         end
     end
-    resResult['total_row'] = queryCountResult[1].total_row;
+    resResult['total_row'] = totalRow;
     --log.debug(resResult);
+    if string.len(limit)>0  then
+
+    else
+
+        resResult['totalPage']=totalPage
+        resResult['pageNum']=_pagenum
+        resResult['pageSize']=_pagesize
+    end
     return resResult;
 end
 

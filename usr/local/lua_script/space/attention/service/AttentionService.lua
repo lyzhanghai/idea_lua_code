@@ -11,7 +11,11 @@ local RedisUtil = require("social.common.redisutil")
 local SsdbUtil = require("social.common.ssdbutil")
 local friendService = require("space.services.FriendService")
 local TS = require "resty.TS"
-local _M = {}
+local TableUtil = require("social.common.table")
+local _M = {
+    space = 1,
+    blog = 2,
+}
 
 --------------------------------------------------------------------
 local function checkParamIsNull(t)
@@ -25,6 +29,7 @@ end
 --设置关注
 local function setAttention(param)
     local db = SsdbUtil:getDb();
+
     local key = param.b_identityid .. "_" .. param.b_personid
     db:zset("space_attention_identityid_" .. param.identityid .. "_personid_" .. param.personid, key, TS.getTs())
     db:incr("space_attention_identityid_" .. param.identityid .. "_personid_" .. param.personid .. "_count", 1);
@@ -167,6 +172,15 @@ function _M.get(param)
     --        personid = personid,
     --        identityid = identityid,
     --    })
+
+    log.debug(param.type);
+
+    local _type = _M[param.type];
+    --if _type==nil then
+    --end
+    log.debug("######################");
+    log.debug(_type)
+
     log.debug(param)
     local db = SsdbUtil:getDb();
     if param.personid and param.identityid and string.len(param.personid) > 0 and string.len(param.identityid) > 0 then
@@ -180,8 +194,10 @@ function _M.get(param)
             result.is_attention = 0;
         end
         --被谁访问
-        db:zset("space_attention_access_" .. param.type .. "_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid, param.identityid .. "_" .. param.personid, TS.getTs())
-        db:zset("space_attention_b_access_" .. param.type .. "_identityid_" .. param.identityid .. "_personid_" .. param.personid, param.b_identityid .. "_" .. param.b_personid, TS.getTs())
+        db:zset("space_attention_access_" .. _type .. "_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid, param.identityid .. "_" .. param.personid, TS.getTs())
+        if param.b_identityid == '5' or param.b_identityid == '6' or param.b_identityid == '7' then
+            db:zset("space_attention_b_access_" .. _type .. "_identityid_" .. param.identityid .. "_personid_" .. param.personid, param.b_identityid .. "_" .. param.b_personid, TS.getTs())
+        end
     end
 
     --关注量
@@ -199,14 +215,14 @@ function _M.get(param)
         result.attentionb_count = 0
     end
 
-    local access_quantity = db:get("space_attention_access_" .. param.type .. "_quantity_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid)
+    local access_quantity = db:get("space_attention_access_" .. _type .. "_quantity_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid)
     if access_quantity and access_quantity[1] and string.len(access_quantity[1]) > 0 then
         result.access_quantity = access_quantity[1]
     else
         result.access_quantity = 0
     end
     if param.personid and param.identityid and string.len(param.personid) > 0 and string.len(param.identityid) > 0 then --如果是自已访问。
-        db:incr("space_attention_access_" .. param.type .. "_quantity_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid, 1); --访问量加1
+        db:incr("space_attention_access_" .. _type .. "_quantity_identityid_" .. param.b_identityid .. "_personid_" .. param.b_personid, 1); --访问量加1
     end
 
     local friendsCount = friendService:getFriendsCountByPersonIdAndIdentityId(param.b_personid, param.b_identityid); --好友数。
@@ -219,12 +235,15 @@ function _M.get(param)
 
     local result1, returnjson = groupModel.queryMyGroupByPersonId("", param.b_personid, param.b_identityid, 1);
 
-
-    if not result1 then
-        result.groupSum = "0"
-    else
-        result.groupSum = returnjson.groupSum
+    if returnjson ~= nil then
+        if not result1 then
+            result.groupSum = "0"
+        else
+            result.groupSum = returnjson.groupSum
+        end
     end
+
+
     local isFriend = false;
     if param.personid and param.identityid and string.len(param.personid) > 0 and string.len(param.identityid) > 0 and param.b_personid and param.b_identityid and string.len(param.b_personid) > 0 and string.len(param.b_identityid) > 0 then
         isFriend = friendService:isFriend(param.personid, param.identityid, param.b_personid, param.b_identityid)
@@ -247,6 +266,7 @@ function _M.accesslist(personid, identityid, type, pagesize, pagenum)
     local db = SsdbUtil:getDb();
     local name = "space_attention_access_" .. type .. "_identityid_" .. identityid .. "_personid_" .. personid;
     log.debug(name)
+
     local offset, limit, totalRow, totalPage = getCount(name, pagesize, pagenum)
     local zResult = db:zrrange(name, offset, limit)
     log.debug(zResult)
@@ -257,11 +277,18 @@ end
 function _M.accesslist_b(personid, identityid, type, pagesize, pagenum)
     local db = SsdbUtil:getDb();
     local name = "space_attention_b_access_" .. type .. "_identityid_" .. identityid .. "_personid_" .. personid
+    --    local keys = db:zkeys(name, '', '', '', 1000000);
+    --    local util = require("social.common.util")
+    --    for i=1,#keys do
+    --        local s_table = Split(keys[i],"_")
+    --        log.debug(s_table[1].."   @ "..s_table[2])
+    --    end
+
     log.debug(name)
+
     local offset, limit, totalRow, totalPage = getCount(name, pagesize, pagenum)
     local zResult = db:zrrange(name, offset, limit)
     local result = getPersonInfoByRedis(zResult)
-
     return result, totalRow, totalPage;
 end
 
@@ -287,6 +314,15 @@ function _M.delete(param)
     log.debug(num)
     log.debug(num_b)
     return true;
+end
+
+
+
+function _M.isAttention(personid, identityid, bpersonid, bidentityid)
+    checkParamIsNull({ personid = personid, identityid = identityid, bpersonid = bpersonid, bidentityid = bidentityid })
+    local db = SsdbUtil:getDb();
+    local is_attention = db:zexists("space_attention_identityid_" .. identityid .. "_personid_" .. personid, bidentityid .. "_" .. bpersonid)
+    return is_attention and is_attention[1] and tonumber(is_attention[1]) > 0
 end
 
 return _M;

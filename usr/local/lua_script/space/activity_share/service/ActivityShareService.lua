@@ -69,11 +69,14 @@ local function listFromDb(param)
         local ssdb = SsdbUtil:getDb()
         for i = 1, #list do
             local id = list[i]['id']
-            local view_detail_sql = "SELECT R.FILE_ID FROM T_SOCIAL_ACTIVITY_SHARE_DETAIL R WHERE R.SHARE_ID =%s AND R.IS_DELETE = 0 ORDER BY R.SEQ_ID LIMIT 0,1"
+            local view_detail_sql = "SELECT R.FILE_ID FROM T_SOCIAL_ACTIVITY_SHARE_DETAIL R WHERE R.SHARE_ID =%s AND R.IS_DELETE = 0 ORDER BY R.SEQUENCE LIMIT 0,1"
+
+            log.debug("========================================")
+            log.debug(view_detail_sql)
             local sql = "SELECT COUNT(*) as _COUNT FROM T_SOCIAL_ACTIVITY_SHARE_ORG WHERE SHARE_ID=%s";
             sql = string.format(sql, id);
             local _ocount = db:query(sql)
-           -- log.debug(_ocount);
+            -- log.debug(_ocount);
             if _ocount and tonumber(_ocount[1]._COUNT) > 0 then
                 list[i]['is_shared'] = true;
             else
@@ -128,11 +131,13 @@ local function listOrgFromDb(param)
     log.debug("获取活动列表.list sql:" .. list_sql);
     local list = DBUtil:querySingleSql(list_sql);
     log.debug(list);
-    local view_detail_sql = "SELECT R.FILE_ID FROM T_SOCIAL_ACTIVITY_SHARE_DETAIL R WHERE R.SHARE_ID =%s AND R.IS_DELETE = 0 AND R.SEQ_ID=1"
+
+
     if list then
         local ssdb = SsdbUtil:getDb()
         for i = 1, #list do
             local id = list[i]['id']
+            local view_detail_sql = "SELECT R.FILE_ID FROM T_SOCIAL_ACTIVITY_SHARE_DETAIL R WHERE R.SHARE_ID =%s AND R.IS_DELETE = 0 AND R.SEQ_ID=1 ORDER BY R.SEQUENCE"
             view_detail_sql = string.format(view_detail_sql, id);
             local detail_result = DBUtil:querySingleSql(view_detail_sql);
 
@@ -141,10 +146,11 @@ local function listOrgFromDb(param)
             if count and count[1] and string.len(count[1]) > 0 then
                 view_count = tonumber(count[1]);
             end
-            log.debug(detail_result)
             list[i]['view_count'] = view_count;
             -- if detail_result and detail_result[1] then
-            list[i]['file_id'] = detail_result[1]['FILE_ID'];
+            if detail_result and detail_result[1] then
+                list[i]['file_id'] = detail_result[1]['FILE_ID'];
+            end
             -- end
         end
     end

@@ -8,6 +8,7 @@
 local web = require("social.router.web")
 local request = require("social.common.request")
 local excellentService = require("space.excellent.service.ExcellentService")
+local attentionService = require("space.attention.service.AttentionService")
 --log.debug(context);
 --log.debug(no_permission_context);
 local cjson = require "cjson"
@@ -16,6 +17,12 @@ local log = require("social.common.log")
 local function getExcellent()
     local ids = request:getStrParam("ids", true, true)
     local limit = request:getStrParam("limit", false, true)
+
+    local type = request:getStrParam("type", false, true)
+
+    local pagenum = request:getStrParam("pagenum", false, true)
+    local pagesize = request:getStrParam("pagesize", false, true)
+
     local ids_table = cjson.decode(ids);
     local org_ids = {}
     local org_types = {};
@@ -28,7 +35,31 @@ local function getExcellent()
     log.debug(org_ids)
     log.debug(org_types)
     log.debug(identity_id)
-    local result = excellentService.getExcellence(org_ids, org_types, identity_id, limit);
+    local result = excellentService.getExcellence(org_ids, org_types, identity_id, limit,pagenum,pagesize);
+
+
+    local _identity_id = ""
+    if identity_id == 1 then
+        _identity_id = "104"
+    elseif identity_id == 2 then
+        _identity_id = "105"
+    elseif identity_id == 3 then
+        _identity_id = "5"
+    elseif identity_id == 4 then
+        _identity_id = "6"
+    end
+    log.debug(result.list);
+    for i=1,#result.list do
+        local personid = result.list[i]['id']
+        log.debug(personid);
+        local param = {b_identityid=_identity_id,b_personid=personid,type=type}
+        local r =  attentionService.get(param)
+        result.list[i]['attention_count'] = r.attention_count;
+        result.list[i]['access_quantity'] = r.access_quantity;
+        result.list[i]['attentionb_count'] = r.attentionb_count;
+
+    end
+
     log.debug(result);
     if result then
         result.success = true;

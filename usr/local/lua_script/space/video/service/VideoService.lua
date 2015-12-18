@@ -113,7 +113,7 @@ function _M.getVideoFolder(personId, identityId, isPrivate)
     if isPrivate and string.len(isPrivate) > 0 then
         sql = sql .. " AND IS_PRIVATE = " .. tonumber(isPrivate)
     end
-    sql = sql .. " ORDER BY CREATE_TIME ASC"
+    sql = sql .. " ORDER BY CREATE_TIME DESC"
     log.debug("获取视频文件列表.sql:" .. sql)
     local result = DBUtil:querySingleSql(sql);
     log.debug(result);

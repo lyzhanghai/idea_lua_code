@@ -237,7 +237,7 @@ function _M.deletPersonCategoryByIds(ids, func)
             deletPersonCategoryByIdsSSDB(ids);
         end
     end)
-    if func then
+    if func and type(func)=="function" then
         func()
     end
     return result, info;
@@ -325,7 +325,7 @@ function _M.deleteArticle(ids, func)
             end
         end
     end);
-    if func then func() end
+    if func and type(func)=="function" then func() end
     return affected_rows
 end
 
@@ -401,7 +401,7 @@ function _M.moveArticle(dest_category_id, ids, func)
         end
     end);
 
-    if func then
+    if func and type(func)=="function" then
         func()
     end
     return (result and result.affected_rows) or 0;
@@ -454,7 +454,7 @@ function _M.updateArticle(param, func)
             updateArticleSSDB(param)
         end
     end)
-    if func then
+    if func and type(func)=="function" then
         func()
     end
     return result.affected_rows
@@ -563,7 +563,7 @@ function _M.saveArticle(param, func)
             saveArticleToSSDB(param, id)
         end
     end)
-    if func then func() end
+    if func and type(func)=="function" then func() end
     return insertid;
 end
 
@@ -645,7 +645,7 @@ function _M.getArticleById(id, func)
             end
         end
     end
-    if func then
+    if func and type(func)=="function" then
         func()
     end
     return result
@@ -731,7 +731,7 @@ function _M.saveBlog(param, func)
             saveBlogSSDB(insertid, param);
         end
     end)
-    if func then
+    if func and type(func)=="function" then
         func()
     end
     return iid;
@@ -791,7 +791,7 @@ function _M.updateBlog(param, func)
         end
     end)
 
-    if func then func() end
+    if func and type(func)=="function" then func() end
     return affected_rows
 end
 
@@ -877,7 +877,7 @@ function _M.personArticleList(param, func)
             end
         end
     end
-    if func then func() end
+    if func and type(func)=="function" then func() end
     return blog
 end
 
@@ -892,9 +892,7 @@ function _M.setBest(ids, org_type, func)
     sql = string.format(sql, BIT_FLAG['bit' .. org_type], table.concat(ids, ','));
     local db = DBUtil:getDb();
     local result = db.query(sql);
-    if func then
-        func()
-    end
+    if func and type(func)=="function" then func() end
     return result.affected_rows
 end
 
@@ -984,7 +982,7 @@ function _M.getBlogInfo(org_person_id, identity_id, func)
             end
         end);
     end
-    if func then func() end
+    if func and type(func)=="function" then func() end
     return result
 end
 
@@ -1045,7 +1043,7 @@ function _M.addCommentNum(blog_id, article_id, func)
             addCommentNumSSDB(blog_id, article_id);
         end
     end)
-    if func then func() end
+    if func and type(func)=="function" then func() end
     return result and result.affected_rows > 0
 end
 
@@ -1109,7 +1107,7 @@ function _M.addBrowseNum(blog_id, article_id, func)
             addBrowseNumSSDB(blog_id, article_id);
         end
     end)
-    if func then func() end
+    if func and type(func)=="function" then func() end
     return result and result.affected_rows > 0
 end
 

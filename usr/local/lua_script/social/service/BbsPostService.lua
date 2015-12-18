@@ -302,7 +302,7 @@ function BbsPostService:getPostsFromDb(bbsid, forumid, topicid, pagenum, pagesiz
         if res then
             for i = 1, #res do
                 local key = "social_bbs_postid_" .. res[i]["id"]
-                local keys = { "id", "content", "personId", "personName", "createTime", "floor", "identityId", "bDelete","parentId" }
+                local keys = { "id", "content", "personId", "personName", "createTime", "floor", "identityId", "bDelete","parentId","topicId" }
                 local _result = db:multi_hget(key, unpack(keys))
                 if _result and #_result > 0 then
                     local _post = util:multi_hget(_result, keys)
@@ -317,6 +317,7 @@ function BbsPostService:getPostsFromDb(bbsid, forumid, topicid, pagenum, pagesiz
                     t.content = _post.content
                     t.b_delete = _post.bDelete;
                     t.parent_id = _post.parentId
+                    t.topic_id = _post.topicId;
                     local key_p = "social_bbs_postid_" .. _post.parentId
                     local keys_p = { "id", "content", "personId", "personName", "createTime", "floor", "identityId", "bDelete" }
                     local _result_p = db:multi_hget(key_p, unpack(keys_p))

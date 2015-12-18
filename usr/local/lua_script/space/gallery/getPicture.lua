@@ -81,7 +81,7 @@ local offset = pageSize*pageNumber-pageSize
 local limit = pageSize
 
 --sql
-local sql = "SELECT * FROM t_social_gallery_picture WHERE folder_id = "..quote(folder_id).." order by create_time asc LIMIT "..offset..","..pageSize
+local sql = "SELECT * FROM t_social_gallery_picture WHERE folder_id = "..quote(folder_id).." order by create_time desc LIMIT "..offset..","..pageSize
 ngx.log(ngx.ERR,"===="..sql)
 local list,err = mysql:query(sql)
 if not list then

@@ -311,9 +311,7 @@ local function getSpaceTeacherData()
     local queryParam = {org_id=org_id,org_type=org_type,teacher_type=teacher_type,teacher_name=teacher_name,pageNumber=pageNumber,pageSize=pageSize}
     local personService = require "base.person.services.PersonService";
     if province=="0" and district=="0" and city=="0" and school=="0" then
-
         local queryResult = personService:queryTeacherByOrgWithPage(queryParam);
-
         cjson.encode_empty_table_as_object(false)
         ngx.log(ngx.ERR,"返回数据：",cjson.encode(queryResult))
         if not queryResult then

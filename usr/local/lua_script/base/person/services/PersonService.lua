@@ -395,4 +395,117 @@ local function getMyTeachers(self,studentId)
 end
 _PersonService.getMyTeachers = getMyTeachers;
 -- -------------------------------------------------------------------------
+--[[
+    描述： 获取人员信息
+	根据person_id和identity_id查询用户详细信息，
+	1.如果是教师返回登录名login_name、真实姓名、所属省、市、区、校id及名称，2如果是学生还要增加返回班级id及班级名称
+]]
+local function getPersonInfo(self,person_id,identity_id)
+	local personModel = require "base.person.model.PersonInfoModel";
+	ngx.log(ngx.ERR,"===================================>"..person_id);
+    local personTable  = personModel: getPersonInfo(person_id,identity_id)
+    if not personTable then
+        return { success=false, info="获取数据失败" };
+    end
+    
+    return { success=true, table_List=personTable };
+
+end
+_PersonService.getPersonInfo = getPersonInfo;
+-- -------------------------------------------------------------------------
+--[[
+    描述： 根据学校ID获取所有教师
+]]
+local function getTeachersBySchId(self,school_id,stage_id,subject_id,pageNumber,pageSize)
+	local personModel = require "base.person.model.PersonInfoModel";
+  
+    local personTable  = personModel: getTeachersBySchId(school_id,stage_id,subject_id,pageNumber,pageSize)
+    if not personTable then
+        return { success=false, info="获取数据失败" };
+    end
+    
+	--[[
+	result["totalRow"] = tonumber(totalRow)
+	result["totalPage"] = tonumber(totalPage)
+	result["pageNumber"] = tonumber(pageNumber)
+	result["pageSize"] = tonumber(pageSize)
+	
+	]]
+	local returnValue={};
+	returnValue.success=true;
+	returnValue.table_List=personTable;
+	local totalRow =  personModel: getTeacherCountBySchId(school_id,stage_id,subject_id)
+	if totalRow then
+		returnValue.totalRow=tonumber(totalRow);
+	
+	end
+	if pageNumber==nil or pageNumber=="" then 
+	else
+		returnValue.pageNumber= tonumber(pageNumber);
+	
+	end
+	if pageSize==nil or pageSize=="" then 
+	else
+		returnValue.pageSize= tonumber(pageSize);
+		local totalPage = math.floor((totalRow+pageSize-1)/pageSize)
+	end
+
+    return returnValue;
+
+end
+_PersonService.getTeachersBySchId = getTeachersBySchId;
+-- -------------------------------------------------------------------------
+--[[
+    描述：需要查询所有人，包括教师、学生、家长等
+]]
+local function queryPersonsByKeyAndOrg(self,unitId, queryKey,identity_ids,pageNumber, pageSize)
+	local personModel = require "base.person.model.PersonInfoModel";
+  
+    local personTable  = personModel: queryPersonsByKeyAndOrg(unitId, queryKey,identity_ids,pageNumber, pageSize)
+	return personTable;
+
+end
+_PersonService.queryPersonsByKeyAndOrg = queryPersonsByKeyAndOrg;
+-- -------------------------------------------------------------------------
+--[[
+    描述：需要查询所有人，包括教师、学生、家长等
+]]
+local function getPersonByClassId(self,class_id)
+	local personModel = require "base.person.model.PersonInfoModel";
+    local personTable  = personModel: getPersonByClassId(class_id);
+	if not personTable then
+        return { success=false, info="获取数据失败" };
+    end
+    
+    return { success=true, personList=personTable };
+
+end
+_PersonService.getPersonByClassId = getPersonByClassId;
+---------------------------------------------------------------------------
+--[[
+    描述：根据旧的uuid查询登录人信息，统一认证需要 by huyue 2015-09-24
+]]
+local function getLoginpersonByOlduseruuid(self,old_user_uuid)
+	local personModel = require "base.person.model.PersonInfoModel";
+    local personTable  = personModel: getLoginpersonByOlduseruuid(old_user_uuid);
+	if not personTable then
+        return { success=false, info="获取数据失败" };
+    end
+    
+    return { success=true, personList=personTable };
+
+end
+_PersonService.getLoginpersonByOlduseruuid = getLoginpersonByOlduseruuid;
+---------------------------------------------------------------------------
+--[[
+	获取person头像
+]]
+local function getPersonTx(self,person_id,identity_id,yw)
+	local personModel=require "base.person.model.PersonInfoModel";
+	local result = personModel:getPersonTx(person_id,identity_id,yw);
+	return result;
+
+end
+_PersonService.getPersonTx = getPersonTx;
+---------------------------------------------------------------------------
 return _PersonService;

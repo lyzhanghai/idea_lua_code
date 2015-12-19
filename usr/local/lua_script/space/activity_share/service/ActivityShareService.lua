@@ -404,7 +404,7 @@ end
 -- 通过id查看 、
 function _M.view(id, isadmin)
     local db = SsdbUtil:getDb();
-    local view_sql = "SELECT R1.TITLE,R1.CONTEXT,R1.ID,R1.PERSON_ID,R1.PERSON_NAME,R1.CREATE_DATE,R1.SEQ_ID FROM T_SOCIAL_ACTIVITY_SHARE R1 WHERE R1.ID = " .. id
+    local view_sql = "SELECT R1.TITLE,R1.CONTEXT,R1.ID,R1.PERSON_ID,R1.IDENTITY_ID,R1.PERSON_NAME,R1.CREATE_DATE,R1.SEQ_ID FROM T_SOCIAL_ACTIVITY_SHARE R1 WHERE R1.ID = " .. id
     local view_result = DBUtil:querySingleSql(view_sql);
     local result = { list = {} }
     local view_detail_sql = "SELECT R.FILE_ID,R.MEMO,R.STYLE,R.CREATE_DATE,R.SOURCE,R.ID,R.SEQ_ID FROM T_SOCIAL_ACTIVITY_SHARE_DETAIL R WHERE R.SHARE_ID = " .. id .. " AND R.IS_DELETE = 0"
@@ -416,6 +416,7 @@ function _M.view(id, isadmin)
         result.person_name = view_result[1].PERSON_NAME;
         result.create_date = view_result[1].CREATE_DATE;
         result.seq_id = view_result[1].SEQ_ID;
+        result.identity_id = view_result[1].IDENTITY_ID;
         log.debug(isadmin)
         if not isadmin then
             db:incr("social_activity_share_view_" .. id .. "_count", 1);

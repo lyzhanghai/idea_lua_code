@@ -86,7 +86,7 @@ local function getCategory()
             local name = result[i]['name'];
             local sequence = result[i]['sequence'];
             local article_num = result[i]['article_num'];
-            local _list = { name = name, id = id, person_name = person_name, sequence = sequence ,article_num=article_num};
+            local _list = { name = name, id = id, person_name = person_name, sequence = sequence, article_num = article_num };
             table.insert(r.list, _list);
         end
         r.success = true;
@@ -105,7 +105,7 @@ end
 local function deletPersonCategoryByIds()
     local ids = request:getStrParam("ids", true, true)
     local _ids = Split(ids, ",")
-    local result,info = blogManagerService.deletPersonCategoryByIds(_ids)
+    local result, info = blogManagerService.deletPersonCategoryByIds(_ids)
     local r = { success = false, info = '' }
     if not result then
         r.info = info;
@@ -421,11 +421,11 @@ local function saveArticle()
 end
 
 ------------------------------------------------------------------------------------------------------------------------
---对评论次数加1
+-- 对评论次数加1
 local function addCommentNum()
     local article_id = request:getStrParam("article_id", true, true)
     local blog_id = request:getStrParam("blog_id", true, true)
-    local result = blogManagerService.addCommentNum(blog_id,article_id);
+    local result = blogManagerService.addCommentNum(blog_id, article_id);
     local r = { success = true, info = "添加成功" }
     if not result then
         r.success = false;
@@ -433,18 +433,34 @@ local function addCommentNum()
     end
     ngx.say(cjson.encode(r))
 end
+
 ------------------------------------------------------------------------------------------------------------------------
---对评浏览数加1
+-- 对评浏览数加1
 local function addBrowseNum()
     local article_id = request:getStrParam("article_id", true, true)
     local blog_id = request:getStrParam("blog_id", true, true)
-    local result = blogManagerService.addBrowseNum(blog_id,article_id);
+    local result = blogManagerService.addBrowseNum(blog_id, article_id);
     local r = { success = true, info = "添加成功" }
     if not result then
         r.success = false;
         r.info = "添加失败."
     end
     ngx.say(cjson.encode(r))
+end
+
+
+local function setShow()
+    local ids = request:getStrParam("ids", true, true)
+    local org_type = request:getStrParam("org_type", true, true)
+    local is_cancel = request:getStrParam("is_cancel", false, true)
+    local _ids = Split(ids, ",")
+    local status, err = pcall(blogService.setShow, { ids = _ids, org_type = org_type ,is_cancel = is_cancel})
+    if status then
+        ngx.say(cjson.encode({ success = true }))
+    else
+        ngx.say(cjson.encode({ success = false, info = err }))
+    end
+    return;
 end
 
 
@@ -453,6 +469,9 @@ local function initCategory()
 
     ngx.say(cjson.encode(result))
 end
+
+
+
 
 -- 配置url.
 -- 按功能分
@@ -474,6 +493,7 @@ local urls = {
     no_permission_context .. "/initCategory", initCategory,
     no_permission_context .. "/addCommentNum", addCommentNum,
     no_permission_context .. "/addBrowseNum", addBrowseNum,
+    context .. '/setShow', setShow,
 }
 local app = web.application(urls, nil)
 app:start()

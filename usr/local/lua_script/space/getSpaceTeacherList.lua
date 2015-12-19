@@ -113,8 +113,10 @@ end
 --1省2市3区县4校5分校6部门7班级
 --显示省市区
 local function getExcellence(record_id)
-    local querySql = "select ifnull(group_concat(t.org_type),0) as org_type from t_social_space_excellence t where t.identityid = 3 and t.record_id="..record_id
+    local querySql = "select ifnull(group_concat(t.org_type),-1) as org_type from t_social_space_excellence t where t.identityid = 3 and t.record_id="..record_id
+    log.debug(querySql);
     local result, err = mysql:query(querySql)
+
     if not result then
         error()
     end
@@ -249,7 +251,7 @@ local function iteratorData(queryResult,resResult,orgType,pageNumber,pageSize)
                 local status,teacherRes = pcall(getExcellence,teacherlist[j].teacher_id)
                 resTempTeacherResult.excellent_group = {}
                 if teacherRes~=nil and #teacherRes>0 then
-                    if teacherRes[1].org_type~="0" then
+                    if teacherRes[1].org_type~="-1" then
                         resTempTeacherResult.excellent_group = arraySort(Split(teacherRes[1].org_type,","));
                     end
                 end
@@ -318,13 +320,14 @@ local function getSpaceTeacherData()
             resResult.info="接口调用返回错误！"
             return cjson.encode(resResult)
         end
-
+        log.debug(queryResult);
         iteratorData(queryResult,resResult,org_type,pageNumber,pageSize)--查询全部调用接口
 
         ngx.log(ngx.ERR,"返回resResult：",cjson.encode(resResult))
     else
 
         local ids,totalRow,totalPage,err = getExcellenceQuery(org_id,org_type,province,city,district,school,pageNumber,pageSize)
+
         if ids~=nil and #ids>0 then
             ngx.log(ngx.ERR,"============",cjson.encode(ids))
             local id_table = {}

@@ -116,7 +116,7 @@ end
 --1省2市3区县4校5分校6部门7班级
 --显示省市区
 local function getExcellence(record_id)
-    local querySql = "select ifnull(group_concat(t.org_type),0) as org_type from t_social_space_excellence t where t.identityid=4 and t.record_id="..record_id
+    local querySql = "select ifnull(group_concat(t.org_type),-1) as org_type from t_social_space_excellence t where t.identityid=4 and t.record_id="..record_id
     local result, err = mysql:query(querySql)
     if not result then
         error()
@@ -244,7 +244,7 @@ local function iteratorData(queryResult,resResult,orgType,pageNumber,pageSize)
                 local status,studentRes = pcall(getExcellence,studentlist[j].student_id)
                 resTempStudentResult.excellent_group = {}
                 if studentRes~=nil and #studentRes>0 then
-                     if studentRes[1].org_type~="0" then
+                     if studentRes[1].org_type~="-1" then
                         resTempStudentResult.excellent_group = arraySort(Split(studentRes[1].org_type,","));
                      end
                 end

@@ -8,7 +8,7 @@ local say = ngx.say
 local len = string.len
 local insert = table.insert
 local quote = ngx.quote_sql_str
-
+local log = require("social.common.log")
 --require model
 local mysqllib = require "resty.mysql"
 local cjson = require "cjson"
@@ -90,7 +90,10 @@ local function save(record_id,org_id,org_type,province_id,city_id,district_id,sc
     local saveSql = "INSERT INTO t_social_space_excellence (record_id, org_id, org_type,provinceid,cityid,districtid,schoolid,classid,identityid) VALUES "
     saveSql = saveSql .. string.format("(%s,%s,%s,%s,%s,%s,%s,%s,%s)", quote(record_id), quote(org_id), quote(org_type),quote(province_id),quote(city_id),quote(district_id),quote(school_id),quote(class_id),quote(identityid))
     ngx.log(ngx.ERR,saveSql);
+    log.debug(saveSql)
     local res, err, errno, sqlstate =mysql:query(saveSql)
+
+    log.debug(res)
     mysql:set_keepalive(0,v_pool_size)
     return res,err
 end

@@ -1,7 +1,7 @@
 --[[
 写操作记录到异步队列
 @Author  feiliming
-@Date    2015-12-8
+@Date    2015-12-25
 ]]
 
 local say = ngx.say
@@ -10,9 +10,7 @@ local quote = ngx.quote_sql_str
 
 --require model
 local cjson = require "cjson"
-local ssdblib = require "resty.ssdb"
 local mysqllib = require "resty.mysql"
-local TS = require "resty.TS"
 
 --post args
 local request_method = ngx.var.request_method
@@ -28,26 +26,30 @@ if not args then
     return
 end
 
-local register_id = args["register_id"]
-local person_id = args["person_id"]
+local org_id = args["org_id"]
+local org_level = args["org_level"]
 local identity_id = args["identity_id"]
+local order_column = args["order_column"]
+local order_type = args["order_type"]
+local pageNumber = args["pageNumber"]
+local pageSize = args["pageSize"]
 
-if not register_id or len(register_id) == 0 or 
-    not person_id or len(person_id) == 0 or 
-    not identity_id or len(identity_id) == 0 or 
-    not title or len(title) == 0 or 
-    not content or len(content) == 0 or 
-    not notice_type or len(notice_type) == 0 then
+if not org_id or len(org_id) == 0 or
+    not org_level or len(org_level) == 0 or
+    not identity_id or len(identity_id) == 0 or
+        not pageNumber or len(pageNumber) == 0 or
+        not pageSize or len(pageSize) == 0  then
 	say("{\"success\":false,\"info\":\"参数错误！\"}")
 	return
 end
 
---ssdb
-local ssdb = ssdblib:new()
-local ok, err = ssdb:connect(v_ssdb_ip, v_ssdb_port)
-if not ok then
-    say("{\"success\":false,\"info\":\""..err.."\"}")
-    return
+pageNumber = tonumber(pageNumber)
+pageSize = tonumber(pageSize)
+if not order_column or len(order_column) == 0  then
+    order_column = "extcredits1"
+end
+if not order_type or len(order_type) == 0 then
+    order_type = "desc"
 end
 
 --mysql
@@ -68,53 +70,111 @@ if not ok then
     return
 end
 
---default
-category_id = category_id or "-1"
-local create_time = os.date("%Y-%m-%d %H:%M:%S")
-local update_ts = TS.getTs()
-local isql = "INSERT INTO t_social_notice(title, overview, person_id, identity_id, create_time, content, "..
-    "category_id, org_id, org_type, register_id, ts, update_ts, thumbnail, attachments, view_count, b_delete, notice_type, stage_id, stage_name, subject_id, subject_name)"..
-    " VALUES ("..quote(title)..", "..quote(overview)..", "..quote(person_id)..", "..quote(identity_id)..
-    ", "..quote(create_time)..", "..quote(content)..", "..quote(category_id)..", "..quote(org_id)..
-    ", "..quote(org_type)..", "..quote(register_id)..", "..quote(update_ts)..", "..quote(update_ts)..
-    ", "..quote(thumbnail)..", "..quote(attachments)..", 0, 0, "..quote(notice_type)..","..quote(stage_id)..","..quote(stage_name)..","..quote(subject_id)..","..quote(subject_name)..")"
-
-local ir, err = mysql:query(isql)
-if not ir then
+--查询启用的体系
+local setting_flag = true
+local sql = "SELECT id,credit_name FROM t_social_credit_setting WHERE B_USE = 1 ORDER BY sequence"
+local ruleset, err = mysql:query(sql)
+if not ruleset then
     say("{\"success\":false,\"info\":\""..err.."\"}")
     return
 end
+if #ruleset == 0 then
+    setting_flag = false
+end
 
-local notice_id = ir.insert_id
---发送给接收者
---ngx.log(ngx.ERR,receive_json)
+local org_level_map = {
+    org_100 = "",
+    org_101 = "province_id",
+    org_102 = "city_id",
+    org_103 = "district_id",
+    org_104 = "school_id",
+    org_105 = "class_id"
+}
 
---正文插入到ssdb
---base64 encode
-local title_base64 = overview and ngx.encode_base64(title) or ""
-local content_base64 = content and ngx.encode_base64(content) or ""
-local overview_base64 = overview and ngx.encode_base64(overview) or ""
+--获取person_id详情, 调用基础数据接口
+local function getPersonInfo(person_id, identity_id)
+    local person = {}
+    if person_id and len(person_id) > 0 and identity_id and len(identity_id) > 0 then
+        local r = {}
+        local personService = require "base.person.services.PersonService"
+        r  = personService:getPersonInfo(person_id,identity_id)
+        if not r or not r.success then
+            return person
+        end
+        person.person_name = r.table_List and r.table_List.person_name or ""
+        person.bureau_id = r.table_List and r.table_List.bureau_id or ""
+        person.bureau_name = r.table_List and r.table_List.bureau_name or ""
+    end
+    return person
+end
 
-local notice_t = {}
-notice_t.notice_id = notice_id
-notice_t.title = title_base64
-notice_t.overview = overview_base64
-notice_t.person_id = person_id
-notice_t.identity_id = identity_id
+local count_list = {}
+local totalPage = 0
+local totalRow = 0
+if setting_flag then
+    local sql1 = "SELECT COUNT(*) AS totalRow FROM t_social_credit_count WHERE %s"
+    if org_level == "100" then
+        sql1 = string.format(sql1, "identity_id="..quote(identity_id), order_column, order_type)
+    elseif org_level == "101" or org_level == "102" or org_level == "103" or org_level == "104" or org_level == "105" then
+        sql1 = string.format(sql1, org_level_map["org_"..org_level].."="..quote(org_id).." AND identity_id="..quote(identity_id))
+    else
+        say("{\"success\":false,\"info\":\"机构类型错误\"}")
+        return
+    end
+    local totalRow_t, err = mysql:query(sql1)
+    if not totalRow_t then
+        say("{\"success\":false,\"info\":\""..err.."\"}")
+        return
+    end
+    totalRow = tonumber(totalRow_t[1].totalRow)
+    totalPage = math.floor((totalRow + pageSize - 1) / pageSize)
+    if totalPage > 0 and pageNumber > totalPage then
+        pageNumber = totalPage
+    end
+    local offset = pageSize*pageNumber-pageSize
+    local limit = pageSize
 
-local hr, err = ssdb:multi_hset("social_notice_"..notice_id, notice_t)
-if not hr then
-    say("{\"success\":false,\"info\":\""..err.."\"}")
-    return
+    local settingBues = {}
+    for _,v in pairs(ruleset) do
+        table.insert(settingBues,v.id)
+    end
+    local sql2 = "SELECT id,person_id,identity_id, %s FROM t_social_credit_count WHERE %s ORDER BY %s %s LIMIT %s, %s"
+    if org_level == "100" then
+        sql2 = string.format(sql2, table.concat(settingBues, ","), "identity_id="..quote(identity_id), order_column, order_type, offset, limit)
+    else
+        sql2 = string.format(sql2, table.concat(settingBues, ","), org_level_map["org_"..org_level].."="..quote(org_id).." AND identity_id="..quote(identity_id), order_column, order_type, offset, limit)
+    end
+    --local log = require "social.common.log"
+    --log.debug(sql1)
+    local sr, err = mysql:query(sql2)
+    if not sr then
+        say("{\"success\":false,\"info\":\""..err.."\"}")
+        return
+    end
+    count_list = sr
+    for k,v in pairs(count_list) do
+        local p = getPersonInfo(v.person_id, v.identity_id)
+        count_list[k].person_name = p.person_name or ""
+        count_list[k].bureau_id = p.bureau_id or ""
+        count_list[k].bureau_name = p.bureau_name or ""
+    end
 end
 
 --return
 local rr = {}
 rr.success = true
+rr.setting_flag = setting_flag
+rr.setting_list = ruleset
+rr.count_list = count_list
+rr.totalRow = totalRow
+rr.totalPage = totalPage
+rr.pageNumber = pageNumber
+rr.pageSize = pageSize
+rr.order_column = order_column
+rr.order_type = order_type
 
 cjson.encode_empty_table_as_object(false)
 say(cjson.encode(rr))
 
 --release
-ssdb:set_keepalive(0,v_pool_size)
 mysql:set_keepalive(0,v_pool_size)

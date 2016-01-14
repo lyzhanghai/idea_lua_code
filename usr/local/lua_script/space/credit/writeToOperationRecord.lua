@@ -1,16 +1,15 @@
 --[[
 写操作记录到异步队列
 @Author  feiliming
-@Date    2015-12-8
+@Date    2015-12-17
 ]]
 
-local say = ngx.say
+local say = ngx.print
 local len = string.len
 local quote = ngx.quote_sql_str
 
 --require model
 local cjson = require "cjson"
-local ssdblib = require "resty.ssdb"
 local mysqllib = require "resty.mysql"
 local TS = require "resty.TS"
 
@@ -27,26 +26,31 @@ if not args then
     say("{\"success\":false,\"info\":\""..err.."\"}")
     return
 end
+local paramstr = args["paramstr"]
+local paramstr_t = paramstr and cjson.decode(paramstr) or {}
+local person_id = paramstr_t.person_id or ""
+local identity_id = paramstr_t.identity_id or ""
+local platform_type = paramstr_t.platform_type
+local ip_addr = paramstr_t.ip_addr or ""
+local operation_system = paramstr_t.operation_system or ""
+local browser = paramstr_t.browser or ""
+local business_type = paramstr_t.business_type
+local relatived_id = paramstr_t.relatived_id or ""
+local r_person_id = paramstr_t.r_person_id or ""
+local r_identity_id = paramstr_t.r_identity_id or ""
+local r_province_id = paramstr_t.r_province_id or ""
+local r_city_id = paramstr_t.r_city_id or ""
+local r_district_id = paramstr_t.r_district_id or ""
+local r_school_id = paramstr_t.r_school_id or ""
+local r_class_id = paramstr_t.r_class_id or ""
+local operation_content = paramstr_t.operation_content or ""
+local norepeat_ts = paramstr_t.norepeat_ts or ""
 
-local register_id = args["register_id"]
-local person_id = args["person_id"]
-local identity_id = args["identity_id"]
+--ngx.log(ngx.ERR,"===========invoke write to operation record"..platform_type..business_type)
 
-if not register_id or len(register_id) == 0 or 
-    not person_id or len(person_id) == 0 or 
-    not identity_id or len(identity_id) == 0 or 
-    not title or len(title) == 0 or 
-    not content or len(content) == 0 or 
-    not notice_type or len(notice_type) == 0 then
-	say("{\"success\":false,\"info\":\"参数错误！\"}")
-	return
-end
-
---ssdb
-local ssdb = ssdblib:new()
-local ok, err = ssdb:connect(v_ssdb_ip, v_ssdb_port)
-if not ok then
-    say("{\"success\":false,\"info\":\""..err.."\"}")
+if not platform_type or len(platform_type) == 0 or
+        not business_type or len(business_type) == 0 then
+    say("{\"success\":false,\"info\":\"参数错误！\"}")
     return
 end
 
@@ -68,53 +72,57 @@ if not ok then
     return
 end
 
---default
-category_id = category_id or "-1"
-local create_time = os.date("%Y-%m-%d %H:%M:%S")
-local update_ts = TS.getTs()
-local isql = "INSERT INTO t_social_notice(title, overview, person_id, identity_id, create_time, content, "..
-    "category_id, org_id, org_type, register_id, ts, update_ts, thumbnail, attachments, view_count, b_delete, notice_type, stage_id, stage_name, subject_id, subject_name)"..
-    " VALUES ("..quote(title)..", "..quote(overview)..", "..quote(person_id)..", "..quote(identity_id)..
-    ", "..quote(create_time)..", "..quote(content)..", "..quote(category_id)..", "..quote(org_id)..
-    ", "..quote(org_type)..", "..quote(register_id)..", "..quote(update_ts)..", "..quote(update_ts)..
-    ", "..quote(thumbnail)..", "..quote(attachments)..", 0, 0, "..quote(notice_type)..","..quote(stage_id)..","..quote(stage_name)..","..quote(subject_id)..","..quote(subject_name)..")"
-
-local ir, err = mysql:query(isql)
-if not ir then
-    say("{\"success\":false,\"info\":\""..err.."\"}")
-    return
-end
-
-local notice_id = ir.insert_id
---发送给接收者
---ngx.log(ngx.ERR,receive_json)
-
---正文插入到ssdb
---base64 encode
-local title_base64 = overview and ngx.encode_base64(title) or ""
-local content_base64 = content and ngx.encode_base64(content) or ""
-local overview_base64 = overview and ngx.encode_base64(overview) or ""
-
-local notice_t = {}
-notice_t.notice_id = notice_id
-notice_t.title = title_base64
-notice_t.overview = overview_base64
-notice_t.person_id = person_id
-notice_t.identity_id = identity_id
-
-local hr, err = ssdb:multi_hset("social_notice_"..notice_id, notice_t)
-if not hr then
-    say("{\"success\":false,\"info\":\""..err.."\"}")
-    return
+--获取person_id详情, 调用基础数据接口
+local person = {}
+if person_id and len(person_id) > 0 and identity_id and len(identity_id) > 0 then
+    local r = {}
+    local personService = require "base.person.services.PersonService"
+    r  = personService:getPersonInfo(person_id,identity_id)
+    if not r or not r.success then
+        say("{\"success\":false,\"info\":\"调用基础数据接口失败\"}")
+        return;
+    end
+    person.province_id = r.table_List and r.table_List.province_id or ""
+    person.district_id = r.table_List and r.table_List.district_id or ""
+    person.city_id = r.table_List and r.table_List.city_id or ""
+    person.school_id = r.table_List and r.table_List.school_id or ""
+    person.class_id = r.table_List and r.table_List.class_id or ""
 end
 
 --return
 local rr = {}
 rr.success = true
 
+--判断是否已经写过，防止写队列重复写
+local ssql = "SELECT id FROM t_social_operation_record where norepeat_ts = "..quote(norepeat_ts)
+local sr, err = mysql:query(ssql)
+if not sr then
+    rr.success = false
+    rr.info = err
+end
+
+if sr and #sr == 0 then
+    --insert mysql
+    local create_time = os.date("%Y-%m-%d %H:%M:%S")
+    local ts = TS.getTs()
+    local isql = "INSERT INTO t_social_operation_record(person_id, indentity_id, province_id, city_id, district_id, school_id, "..
+            "class_id, ip_addr, os, browser, create_time, ts, platform_type, business_type, relatived_id, r_person_id, r_identity_id, "..
+            "r_province_id, r_city_id, r_district_id, r_school_id, r_class_id, operation_content, norepeat_ts)"..
+            " VALUES ("..quote(person_id)..", "..quote(identity_id)..", "..quote(person.province_id or "")..", "..quote(person.city_id or "")..
+            ", "..quote(person.district_id or "")..", "..quote(person.school_id or "")..", "..quote(person.class_id or "")..", "..quote(ip_addr)..
+            ", "..quote(operation_system)..", "..quote(browser)..", "..quote(create_time)..", "..quote(ts)..
+            ", "..quote(platform_type)..", "..quote(business_type)..", "..quote(relatived_id)..", "..quote(r_person_id)..
+            ", "..quote(r_identity_id)..", "..quote(r_province_id)..", "..quote(r_city_id)..", "..quote(r_district_id)..
+            ", "..quote(r_school_id)..", "..quote(r_class_id)..", "..quote(operation_content)..", "..quote(norepeat_ts)..")"
+    local ir, err = mysql:query(isql)
+    if not ir then
+        rr.success = false
+        rr.info = err
+    end
+end
+
 cjson.encode_empty_table_as_object(false)
 say(cjson.encode(rr))
 
 --release
-ssdb:set_keepalive(0,v_pool_size)
 mysql:set_keepalive(0,v_pool_size)

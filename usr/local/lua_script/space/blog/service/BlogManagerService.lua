@@ -11,21 +11,15 @@ local log = require("social.common.log")
 local SSDBUtil = require("social.common.ssdbutil")
 local TS = require "resty.TS"
 --local TableUtil = require("social.common.table")
-local DBUtil = require "common.DBUtil";
+local DBUtil = require "social.common.mysqlutil";
 local quote = ngx.quote_sql_str
 local util = require("social.common.util")
 local TableUtil = require("social.common.table")
 local baseService = require("social.service.CommonBaseService")
+local Constant = require("space.blog.constant.Constant")
 log.level = "debug"
 local _M = {
     cache = true
-}
-
-local BIT_FLAG = {
-    bit101 = 8,
-    bit102 = 4,
-    bit103 = 2,
-    bit104 = 1
 }
 
 local function checkNull(param)
@@ -87,8 +81,12 @@ end
 local function savePersonCategoryToDb(param, func)
     local columns = TableUtil:keys(param);
     local values = TableUtil:values(param);
+    local v = {}
+    for i = 1, #values do
+        table.insert(v, quote(values[i]))
+    end
     local sql = "INSERT INTO `%s` (`%s`) VALUES (%s)";
-    sql = string.format(sql, "T_SOCIAL_BLOG_CATEGORY", table.concat(columns, "`,`"), "'" .. table.concat(values, "','") .. "'")
+    sql = string.format(sql, "T_SOCIAL_BLOG_CATEGORY", table.concat(columns, "`,`"), table.concat(v, ","))
     log.debug(sql);
     local insertid = DBUtil:querySingleSql(sql).insert_id
     func(insertid)
@@ -203,7 +201,7 @@ end
 
 local function deletPersonCategoryByIdsDb(ids, func)
 
-    local sql = "SELECT COUNT(ID) AS c  FROM T_SOCIAL_BLOG_ARTICLE WHERE PERSON_CATEGORY_ID=%s"
+    local sql = "SELECT COUNT(ID) AS c  FROM T_SOCIAL_BLOG_ARTICLE WHERE  PERSON_CATEGORY_ID=%s AND IS_DEL=0"
     local db = DBUtil:getDb();
     local delete_ids = {}
     for i = 1, #ids do
@@ -237,7 +235,7 @@ function _M.deletPersonCategoryByIds(ids, func)
             deletPersonCategoryByIdsSSDB(ids);
         end
     end)
-    if func and type(func)=="function" then
+    if func and type(func) == "function" then
         func()
     end
     return result, info;
@@ -325,7 +323,7 @@ function _M.deleteArticle(ids, func)
             end
         end
     end);
-    if func and type(func)=="function" then func() end
+    if func and type(func) == "function" then func() end
     return affected_rows
 end
 
@@ -342,9 +340,9 @@ local function moveArticleDB(dest_category_id, ids, func)
     db:query("START TRANSACTION;")
     local _ids = {}
     local _category_ids = {}
-    for i=1,#ids do
-        table.insert(_ids,ids[i]['id']);
-        table.insert(_category_ids,ids[i]['category_id']);
+    for i = 1, #ids do
+        table.insert(_ids, ids[i]['id']);
+        table.insert(_category_ids, ids[i]['category_id']);
     end
 
     local sql = "UPDATE T_SOCIAL_BLOG_ARTICLE  SET PERSON_CATEGORY_ID=%s WHERE ID IN (%s)"
@@ -353,11 +351,11 @@ local function moveArticleDB(dest_category_id, ids, func)
     local result = db:query(sql)
 
     log.debug(_category_ids);
-    for i = 1,#_category_ids  do
+    for i = 1, #_category_ids do
         local c_sql = "UPDATE T_SOCIAL_BLOG_CATEGORY SET ARTICLE_NUM=ARTICLE_NUM-1 WHERE ID=%s"
-        c_sql = string.format(c_sql,_category_ids[i]);
+        c_sql = string.format(c_sql, _category_ids[i]);
         log.debug(c_sql)
-        local result1= db:query(c_sql);
+        local result1 = db:query(c_sql);
         if not result1 then
             db:query("ROLLBACK;");
             return nil;
@@ -365,7 +363,7 @@ local function moveArticleDB(dest_category_id, ids, func)
     end
 
     local r_sql = "UPDATE T_SOCIAL_BLOG_CATEGORY SET ARTICLE_NUM=ARTICLE_NUM+%s WHERE ID=%s"
-    r_sql = string.format(r_sql,#_ids,dest_category_id);
+    r_sql = string.format(r_sql, #_ids, dest_category_id);
     log.debug(r_sql)
     local result2 = db:query(r_sql);
 
@@ -401,7 +399,7 @@ function _M.moveArticle(dest_category_id, ids, func)
         end
     end);
 
-    if func and type(func)=="function" then
+    if func and type(func) == "function" then
         func()
     end
     return (result and result.affected_rows) or 0;
@@ -454,7 +452,7 @@ function _M.updateArticle(param, func)
             updateArticleSSDB(param)
         end
     end)
-    if func and type(func)=="function" then
+    if func and type(func) == "function" then
         func()
     end
     return result.affected_rows
@@ -547,11 +545,21 @@ function _M.saveArticle(param, func)
         person_category_id = param.person_category_id,
         title = param.title,
         content = param.content,
-        blog_id = param.blog_id,
+        --blog_id = param.blog_id,
         person_id = param.person_id,
         person_name = param.person_name,
         identity_id = param.identity_id,
     })
+    --如果博客不存在，保存博客信息.
+    local blog_result = _M.getBlogInfo(param.person_id, param.identity_id)
+    if not blog_result or TableUtil:length(blog_result) <= 0 then
+        local _param = { name = param.person_name .. "的博客", identity_id = param.identity_id, theme_id = 'theme1', org_person_id = param.person_id,province_id=param.province_id,city_id=param.city_id,district_id=param.district_id,school_id=param.school_id }
+        _param.check_status=0;
+        param.blog_id = _M.saveBlog(_param)
+    else
+        param.blog_id = blog_result["id"];
+    end
+
     param.ts = TS.getTs()
     param.update_ts = TS.getTs()
     param.create_time = os.date("%Y-%m-%d %H:%M:%S")
@@ -563,7 +571,7 @@ function _M.saveArticle(param, func)
             saveArticleToSSDB(param, id)
         end
     end)
-    if func and type(func)=="function" then func() end
+    if func and type(func) == "function" then func() end
     return insertid;
 end
 
@@ -645,7 +653,7 @@ function _M.getArticleById(id, func)
             end
         end
     end
-    if func and type(func)=="function" then
+    if func and type(func) == "function" then
         func()
     end
     return result
@@ -690,7 +698,13 @@ local function saveBlogDb(param, func)
     local values = TableUtil:values(param);
     local sql = "INSERT INTO `%s` (`%s`) VALUES (%s)";
 
-    sql = string.format(sql, "T_SOCIAL_BLOG", table.concat(columns, "`,`"), "'" .. table.concat(values, "','") .. "'")
+
+    local v = {}
+    for i = 1, #values do
+        table.insert(v, quote(values[i]))
+    end
+
+    sql = string.format(sql, "T_SOCIAL_BLOG", table.concat(columns, "`,`"), table.concat(v, ","))
 
     log.debug(sql);
     local db = DBUtil:getDb();
@@ -703,6 +717,7 @@ local function saveBlogSSDB(id, param)
     local name = "social_blog_info_%s"
     local _name = "social_blog_info_personid_%s_identityid_%s";
     local db = SSDBUtil:getDb();
+    log.debug(param);
     name = string.format(name, id)
     param.id = id;
     _name = string.format(_name, param.org_person_id, param.identity_id)
@@ -716,7 +731,7 @@ function _M.saveBlog(param, func)
     checkNull({ name = param.name, identity_id = param.identity_id, theme_id = param.theme_id, org_person_id = param.org_person_id })
 
     local blog_result = getBlog(param.org_person_id, param.identity_id)
-
+    log.debug(blog_result);
 
     if blog_result and TableUtil:length(blog_result) > 0 then
         error('此用户的博客已存在.')
@@ -731,7 +746,7 @@ function _M.saveBlog(param, func)
             saveBlogSSDB(insertid, param);
         end
     end)
-    if func and type(func)=="function" then
+    if func and type(func) == "function" then
         func()
     end
     return iid;
@@ -774,6 +789,7 @@ local function updateBlogDb(param, func)
         return sql;
     end
     local sql = string.format(templet, 'T_SOCIAL_BLOG', setSql(), 'id=' .. param.id);
+    log.debug(sql);
     local db = DBUtil:getDb();
     local affected_rows = db:query(sql).affected_rows
 
@@ -791,15 +807,8 @@ function _M.updateBlog(param, func)
         end
     end)
 
-    if func and type(func)=="function" then func() end
+    if func and type(func) == "function" then func() end
     return affected_rows
-end
-
-------------------------------------------------------------------------------------------------------------------------
----
--- 20.	机构文章管理搜索
---- @param table param
-function _M.articleList(param, func)
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -859,7 +868,10 @@ function _M.personArticleList(param, func)
                 local blog_article = {}
                 local name = "social_blog_category_%s"
                 name = string.format(name, _blog_article.person_category_id)
+                log.debug("分类缓存.")
+                log.debug(name);
                 local category_result = ssdb:multi_hget(name, unpack({ "name" }))
+                log.debug(category_result);
                 local _category_result = util:multi_hget(category_result, { "name" })
                 --log.debug(_category_result)
 
@@ -877,7 +889,7 @@ function _M.personArticleList(param, func)
             end
         end
     end
-    if func and type(func)=="function" then func() end
+    if func and type(func) == "function" then func() end
     return blog
 end
 
@@ -889,59 +901,23 @@ function _M.setBest(ids, org_type, func)
     --local bit = require("social.common.bit")
     checkNull({ ids = ids, org_type = org_type })
     local sql = "UPDATE T_SOCIAL_BLOG_ARTICLE SET BEST=%s WHERE ID IN (%s)";
-    sql = string.format(sql, BIT_FLAG['bit' .. org_type], table.concat(ids, ','));
+    sql = string.format(sql, Constant.BIT_FLAG[org_type], table.concat(ids, ','));
     local db = DBUtil:getDb();
     local result = db.query(sql);
-    if func and type(func)=="function" then func() end
+    if func and type(func) == "function" then func() end
     return result.affected_rows
-end
-
-------------------------------------------------------------------------------------------------------------------------
---- 22.	机构文章管理推荐（支持批量推荐）
---- @param table param
-function _M.setRecommend(param, func)
-end
-
-
-------------------------------------------------------------------------------------------------------------------------
---- 23.	机构文章管理删除（支持批量删除）
---- @param table ids
-function _M.deleteOrgArticle(ids, func)
-    _M.deleteArticle(ids, func)
-end
-
-------------------------------------------------------------------------------------------------------------------------
---- 24.	机构博客管理优秀博客管理搜索
---- @param string org_person_id
---- @param string org_type
---- @param string isall
-function _M.excellentList(org_person_id, org_type, isall, func)
-end
-
-------------------------------------------------------------------------------------------------------------------------
---- 25.	机构博客管理优秀博客管理设置优秀取消优秀
---- @param string org_person_id
---- @param string org_type
---- @param string isall
-function _M.excellentSet(param, func)
-end
-
-------------------------------------------------------------------------------------------------------------------------
---- 26.	验证个人博客是否有分类
--- @param string person_id
--- @param string identity_id
-function _M.validateCategory(person_id, identity_id, func)
 end
 
 local function getBlogInfoDb(org_person_id, identity_id, func)
     local db = DBUtil:getDb();
     local sql = "SELECT * FROM T_SOCIAL_BLOG WHERE ORG_PERSON_ID=%s AND IDENTITY_ID=%s"
     sql = string.format(sql, org_person_id, identity_id);
+    log.debug(sql);
     local _result = db:query(sql)
     local result;
     if _result and TableUtil:length(_result) > 0 then
         result = _result[1];
-        func(result[1]['id'], result);
+        func(result['id'], result);
     end
 
     return result;
@@ -974,15 +950,17 @@ end
 
 function _M.getBlogInfo(org_person_id, identity_id, func)
     checkNull({ org_person_id = org_person_id, identity_id = identity_id })
+
     local result = getBlogInfoSSDB(org_person_id, identity_id)
     if not result then
         result = getBlogInfoDb(org_person_id, identity_id, function(id, param) --查完数据库回填至ssdb.
             if _M.cache then
+
                 saveBlogSSDB(id, param)
             end
         end);
     end
-    if func and type(func)=="function" then func() end
+    if func and type(func) == "function" then func() end
     return result
 end
 
@@ -1043,7 +1021,7 @@ function _M.addCommentNum(blog_id, article_id, func)
             addCommentNumSSDB(blog_id, article_id);
         end
     end)
-    if func and type(func)=="function" then func() end
+    if func and type(func) == "function" then func() end
     return result and result.affected_rows > 0
 end
 
@@ -1107,7 +1085,7 @@ function _M.addBrowseNum(blog_id, article_id, func)
             addBrowseNumSSDB(blog_id, article_id);
         end
     end)
-    if func and type(func)=="function" then func() end
+    if func and type(func) == "function" then func() end
     return result and result.affected_rows > 0
 end
 

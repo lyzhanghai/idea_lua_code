@@ -13,7 +13,7 @@ local cjson = require "cjson"
 local ssdblib = require "resty.ssdb"
 local mysqllib = require "resty.mysql"
 local TS = require "resty.TS"
-
+local log = require "social.common.log"
 --post args
 local request_method = ngx.var.request_method
 local args,err
@@ -28,26 +28,21 @@ if not args then
     return
 end
 
-local register_id = args["register_id"]
-local person_id = args["person_id"]
-local identity_id = args["identity_id"]
+local rule_id = args["rule_id"]
+local rule_name = args["rule_name"]
+local rule_comment = args["rule_comment"]
+local cycle_type = args["cycle_type"]
+local reward_num = args["reward_num"]
+local extcredits = args["extcredits"]
+local b_use = args["b_use"]
 
-if not register_id or len(register_id) == 0 or 
-    not person_id or len(person_id) == 0 or 
-    not identity_id or len(identity_id) == 0 or 
-    not title or len(title) == 0 or 
-    not content or len(content) == 0 or 
-    not notice_type or len(notice_type) == 0 then
+if not rule_id or len(rule_id) == 0 or
+    not rule_name or len(rule_name) == 0 or
+    not extcredits or len(extcredits) == 0 or
+    not b_use or len(b_use) == 0 or
+    not cycle_type or len(cycle_type) == 0  then
 	say("{\"success\":false,\"info\":\"参数错误！\"}")
 	return
-end
-
---ssdb
-local ssdb = ssdblib:new()
-local ok, err = ssdb:connect(v_ssdb_ip, v_ssdb_port)
-if not ok then
-    say("{\"success\":false,\"info\":\""..err.."\"}")
-    return
 end
 
 --mysql
@@ -68,53 +63,49 @@ if not ok then
     return
 end
 
---default
-category_id = category_id or "-1"
-local create_time = os.date("%Y-%m-%d %H:%M:%S")
-local update_ts = TS.getTs()
-local isql = "INSERT INTO t_social_notice(title, overview, person_id, identity_id, create_time, content, "..
-    "category_id, org_id, org_type, register_id, ts, update_ts, thumbnail, attachments, view_count, b_delete, notice_type, stage_id, stage_name, subject_id, subject_name)"..
-    " VALUES ("..quote(title)..", "..quote(overview)..", "..quote(person_id)..", "..quote(identity_id)..
-    ", "..quote(create_time)..", "..quote(content)..", "..quote(category_id)..", "..quote(org_id)..
-    ", "..quote(org_type)..", "..quote(register_id)..", "..quote(update_ts)..", "..quote(update_ts)..
-    ", "..quote(thumbnail)..", "..quote(attachments)..", 0, 0, "..quote(notice_type)..","..quote(stage_id)..","..quote(stage_name)..","..quote(subject_id)..","..quote(subject_name)..")"
+local extcredits_list = {}
 
-local ir, err = mysql:query(isql)
-if not ir then
-    say("{\"success\":false,\"info\":\""..err.."\"}")
+local status,err =pcall(function()
+    extcredits_list = cjson.decode(extcredits)
+end)
+
+if not status then
+    say("{\"success\":false,\"info\":\"参数错误！\"}")
+    return;
+end
+if not extcredits or len(extcredits) == 0 or not extcredits_list or next(extcredits_list) == nil then
+    say("{\"success\":false,\"info\":\"参数错误！\"}")
     return
 end
 
-local notice_id = ir.insert_id
---发送给接收者
---ngx.log(ngx.ERR,receive_json)
 
---正文插入到ssdb
---base64 encode
-local title_base64 = overview and ngx.encode_base64(title) or ""
-local content_base64 = content and ngx.encode_base64(content) or ""
-local overview_base64 = overview and ngx.encode_base64(overview) or ""
+local resultTable = {};
+resultTable.rule_id = rule_id
+resultTable.rule_name = rule_name
+resultTable.rule_comment = rule_comment
+resultTable.cycle_type = cycle_type
+resultTable.reward_num = reward_num
+resultTable.extcredits = extcredits_list
+resultTable.b_use = b_use
+local updatats = TS.getTs()
+local updataSql = "update t_social_credit_rule set rule_name="..quote(rule_name)..",rule_comment="..quote(rule_comment)
+                ..",cycle_type="..quote(cycle_type)..",reward_num="..quote(reward_num)..",b_use="..quote(b_use)..",ts="..updatats
 
-local notice_t = {}
-notice_t.notice_id = notice_id
-notice_t.title = title_base64
-notice_t.overview = overview_base64
-notice_t.person_id = person_id
-notice_t.identity_id = identity_id
-
-local hr, err = ssdb:multi_hset("social_notice_"..notice_id, notice_t)
-if not hr then
-    say("{\"success\":false,\"info\":\""..err.."\"}")
-    return
+for k,v in pairs(extcredits_list) do
+    if next(extcredits_list) == nil then
+        updataSql = updataSql..""
+    else
+        updataSql = updataSql..","..k.."="..quote(v)
+    end
 end
+updataSql = updataSql.." where id = "..quote(rule_id)
 
---return
-local rr = {}
-rr.success = true
-
-cjson.encode_empty_table_as_object(false)
-say(cjson.encode(rr))
+local result, err = mysql:query(updataSql)
+if not result then
+    say("{\"success\":false,\"info\":\""..err.."\"}")
+else
+    say("{\"success\":true}")
+end
 
 --release
-ssdb:set_keepalive(0,v_pool_size)
 mysql:set_keepalive(0,v_pool_size)

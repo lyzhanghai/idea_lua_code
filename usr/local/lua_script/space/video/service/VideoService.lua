@@ -1,4 +1,4 @@
-local DBUtil = require "common.DBUtil";
+local DBUtil = require "social.common.mysqlutil";
 local TableUtil = require("social.common.table")
 local log = require("social.common.log")
 local RedisUtil = require("social.common.redisutil")

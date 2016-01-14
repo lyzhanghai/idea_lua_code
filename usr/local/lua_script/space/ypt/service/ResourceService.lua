@@ -9,7 +9,7 @@
 local log = require("social.common.log")
 local SsdbUtil = require("social.common.ssdbutil")
 local RedisUtil = require("social.common.redisutil")
-local DBUtil = require "common.DBUtil";
+local DBUtil = require "social.common.mysqlutil";
 local myPrime = require "resty.PRIME";
 local util = require("social.common.util")
 local TableUtil = require("social.common.table")

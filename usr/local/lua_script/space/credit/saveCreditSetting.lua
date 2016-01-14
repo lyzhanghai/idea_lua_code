@@ -1,7 +1,7 @@
 --[[
 写操作记录到异步队列
 @Author  feiliming
-@Date    2015-12-8
+@Date    2015-12-22
 ]]
 
 local say = ngx.say
@@ -12,7 +12,7 @@ local quote = ngx.quote_sql_str
 local cjson = require "cjson"
 local ssdblib = require "resty.ssdb"
 local mysqllib = require "resty.mysql"
-local TS = require "resty.TS"
+local log = require "social.common.log"
 
 --post args
 local request_method = ngx.var.request_method
@@ -28,18 +28,24 @@ if not args then
     return
 end
 
-local register_id = args["register_id"]
-local person_id = args["person_id"]
-local identity_id = args["identity_id"]
-
-if not register_id or len(register_id) == 0 or 
-    not person_id or len(person_id) == 0 or 
-    not identity_id or len(identity_id) == 0 or 
-    not title or len(title) == 0 or 
-    not content or len(content) == 0 or 
-    not notice_type or len(notice_type) == 0 then
+local list = args["list"]
+local list_t = list and cjson.decode(list)
+log.debug(list_t)
+if not list or len(list) == 0 or not list_t then
 	say("{\"success\":false,\"info\":\"参数错误！\"}")
 	return
+end
+for _,v in pairs(list_t) do
+    if not v then
+        say("{\"success\":false,\"info\":\"参数错误！\"}")
+        return
+    end
+    if not v.credit_name or not v.credit_icon or
+            not v.credit_unit or not v.credit_init or
+            not v.b_use or not v.id then
+        say("{\"success\":false,\"info\":\"参数错误！\"}")
+        return
+    end
 end
 
 --ssdb
@@ -68,49 +74,34 @@ if not ok then
     return
 end
 
---default
-category_id = category_id or "-1"
-local create_time = os.date("%Y-%m-%d %H:%M:%S")
-local update_ts = TS.getTs()
-local isql = "INSERT INTO t_social_notice(title, overview, person_id, identity_id, create_time, content, "..
-    "category_id, org_id, org_type, register_id, ts, update_ts, thumbnail, attachments, view_count, b_delete, notice_type, stage_id, stage_name, subject_id, subject_name)"..
-    " VALUES ("..quote(title)..", "..quote(overview)..", "..quote(person_id)..", "..quote(identity_id)..
-    ", "..quote(create_time)..", "..quote(content)..", "..quote(category_id)..", "..quote(org_id)..
-    ", "..quote(org_type)..", "..quote(register_id)..", "..quote(update_ts)..", "..quote(update_ts)..
-    ", "..quote(thumbnail)..", "..quote(attachments)..", 0, 0, "..quote(notice_type)..","..quote(stage_id)..","..quote(stage_name)..","..quote(subject_id)..","..quote(subject_name)..")"
-
-local ir, err = mysql:query(isql)
-if not ir then
-    say("{\"success\":false,\"info\":\""..err.."\"}")
-    return
-end
-
-local notice_id = ir.insert_id
---发送给接收者
---ngx.log(ngx.ERR,receive_json)
-
---正文插入到ssdb
---base64 encode
-local title_base64 = overview and ngx.encode_base64(title) or ""
-local content_base64 = content and ngx.encode_base64(content) or ""
-local overview_base64 = overview and ngx.encode_base64(overview) or ""
-
-local notice_t = {}
-notice_t.notice_id = notice_id
-notice_t.title = title_base64
-notice_t.overview = overview_base64
-notice_t.person_id = person_id
-notice_t.identity_id = identity_id
-
-local hr, err = ssdb:multi_hset("social_notice_"..notice_id, notice_t)
-if not hr then
-    say("{\"success\":false,\"info\":\""..err.."\"}")
-    return
+local function updateCreditSetting(list_t)
+    for _,v in pairs(list_t) do
+        local usql = "UPDATE t_social_credit_setting SET credit_name = %s,credit_icon = %s, credit_unit = %s, credit_init = %s, b_use = %s WHERE id = %s"
+        usql = string.format(usql, quote(v.credit_name), quote(v.credit_icon), quote(v.credit_unit), quote(v.credit_init), quote(v.b_use), quote(v.id))
+        --log.debug(usql)
+        local ur, err = mysql:query(usql)
+        if not ur or ur.affected_rows == 0 then
+            error("更新积分体系失败!")
+        end
+    end
 end
 
 --return
 local rr = {}
 rr.success = true
+
+--事务控制
+mysql:query("START TRANSACTION;")
+local status, err = pcall(function()
+    updateCreditSetting(list_t)
+end)
+if status then
+    mysql:query("COMMIT;")
+else
+    mysql:query("ROLLBACK;")
+    rr.success = false
+    rr.info = err
+end
 
 cjson.encode_empty_table_as_object(false)
 say(cjson.encode(rr))

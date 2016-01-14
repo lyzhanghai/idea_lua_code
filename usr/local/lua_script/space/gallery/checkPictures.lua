@@ -58,8 +58,8 @@ for i=1,#t_ids do
     table.insert(t_sqls,fid)
 end
 local str = table.concat(t_sqls,",")
-local DBUtil = require "common.DBUtil";
-local checkSql = "SELECT file_id FROM T_SOCIAL_GALLERY_PICTURE T WHERE T.FILE_ID IN ("..str..")";
+local DBUtil = require "social.common.mysqlutil";
+local checkSql = "SELECT file_id FROM T_SOCIAL_GALLERY_PICTURE T WHERE T.FILE_ID IN ("..str..") ORDER BY FIELD(T.FILE_ID,"..str..")";
 local ids = DBUtil:querySingleSql(checkSql);
 
 local result = {}

@@ -9,7 +9,7 @@ local len = string.len
 local cjson = require "cjson"
 local ssdbUtil = require "social.common.ssdbutil"
 local redisUtil = require "social.common.redisutil"
-local mysqlUtil = require "common.DBUtil"
+local mysqlUtil = require "social.common.mysqlutil"
 
 local _M = {}
 

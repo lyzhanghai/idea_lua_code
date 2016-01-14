@@ -7,7 +7,7 @@
 --
 
 local log = require("social.common.log")
-local DBUtil = require "common.DBUtil";
+local DBUtil = require "social.common.mysqlutil";
 local TS = require "resty.TS"
 local TableUtil = require("social.common.table")
 
@@ -100,7 +100,6 @@ function _M.getStatSpace(identityid,stattype,pagesize,pagenum,type)
     list_sql = list_sql .. " LIMIT " .. offset .. "," .. pagesize
     log.debug(list_sql);
     local list = db:query(list_sql);
-    DBUtil:keepDbAlive(db);
     getIconAndName(list)
     local result = { list = list, totalRow = totalRow, totalPage = totalPage, pageNum = pagenum, pageSize = pagesize }
     return result

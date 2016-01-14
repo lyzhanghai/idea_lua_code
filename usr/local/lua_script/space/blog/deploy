@@ -4,3 +4,16 @@
         /usr/local/sphinx/bin/indexer -c /usr/local/sphinx/etc/csft_blog_article.conf --rotate --all
         #停止
         /usr/local/sphinx/bin/searchd -c /usr/local/sphinx/etc/csft_blog_article.conf --stop
+
+
+/usr/local/sphinx/bin/indexer -c /usr/local/sphinx/etc/csft_blog_article_recommend.conf --rotate --all
+/usr/local/sphinx/bin/searchd -c /usr/local/sphinx/etc/csft_blog_article_recommend.conf
+/usr/local/sphinx/bin/searchd -c /usr/local/sphinx/etc/csft_blog_article_recommend.conf --stop
+
+
+ CREATE TABLE `t_social_blog_article_recommend_sphinxse` (
+             `id` int(11) unsigned NOT NULL,
+             `weight` int(11) DEFAULT '1',
+             `query` varchar(20480) NOT NULL,
+             KEY `query` (`query`(1024))
+           ) ENGINE=SPHINX DEFAULT CHARSET=utf8 CONNECTION='sphinx://127.0.0.1:3344'

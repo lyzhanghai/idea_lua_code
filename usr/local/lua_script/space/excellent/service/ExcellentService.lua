@@ -5,7 +5,7 @@
 -- Time: 16:21
 -- To change this template use File | Settings | File Templates.
 --
-local DBUtil = require "common.DBUtil";
+local DBUtil = require "social.common.mysqlutil";
 local SsdbUtil = require("social.common.ssdbutil")
 local cjson = require "cjson"
 local log = require("social.common.log")

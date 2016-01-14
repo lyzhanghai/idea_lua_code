@@ -10,7 +10,7 @@ local log = require("social.common.log")
 local SsdbUtil = require("social.common.ssdbutil")
 local TS = require "resty.TS"
 local TableUtil = require("social.common.table")
-local DBUtil = require "common.DBUtil";
+local DBUtil = require "social.common.mysqlutil";
 local Constant = require "social.common.constant"
 local quote = ngx.quote_sql_str
 local _M = {}
@@ -101,7 +101,6 @@ local function listFromDb(param)
         end
     end
     local result = { list = list, totalRow = totalRow, totalPage = totalPage, pageNum = _pagenum, pageSize = _pagesize }
-    DBUtil:keepDbAlive(db);
     return result;
 end
 
@@ -234,7 +233,6 @@ local function saveToDb(param)
         return false;
     end
     --local queryResult = DBUtil:querySingleSql(insert_sql .. values_sql);
-    DBUtil:keepDbAlive(db);
     return true, share_id
 end
 
@@ -274,7 +272,6 @@ local function deleteToDb(id)
         end
     end
     db:query("COMMIT;")
-    DBUtil:keepDbAlive(db);
     return true;
 end
 
@@ -284,7 +281,6 @@ local function deleteOrgToDb(org_id, id)
     local delete_org_sql = "DELETE FROM T_SOCIAL_ACTIVITY_SHARE_ORG WHERE ORG_ID=" .. org_id .. " AND SHARE_ID=" .. id;
     local result_o = db:query(delete_org_sql)
     db:query("COMMIT;")
-    DBUtil:keepDbAlive(db);
     if result_o.affected_rows > 0 then
         --        local delete_sql = "UPDATE T_SOCIAL_ACTIVITY_SHARE SET IS_DELETE = 1 WHERE ID = " .. id
         --        local result = db:query(delete_sql)
@@ -382,7 +378,6 @@ function _M.update(param)
         db:query("ROLLBACK;");
         return false;
     end
-    DBUtil:keepDbAlive(db);
     return true;
 end
 

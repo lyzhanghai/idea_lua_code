@@ -70,7 +70,7 @@ table.insert(t_sqls,usql)
 local usql1 = "UPDATE t_social_gallery_folder SET picture_num = picture_num + "..(#t_sqls-1).." WHERE id = "..quote(to_folder_id)..";"
 table.insert(t_sqls,usql1)
 
-local DBUtil = require "common.DBUtil";
+local DBUtil = require "social.common.mysqlutil";
 local dresult = DBUtil:batchExecuteSqlInTx(t_sqls, 1000)
 
 --[[照片数

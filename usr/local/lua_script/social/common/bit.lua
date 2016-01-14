@@ -137,7 +137,15 @@ function bit:_lshift(a, n)
     end
     return self:b2d(r)
 end
-
+function bit:getInTable(b)
+    local t = {};
+    for i=1,15 do
+        if bit:_and(b,i)~=0 then
+            table.insert(t,i)
+        end
+    end
+    return t;
+end
 
 return bit;
 --bs=bit:d2b(7)

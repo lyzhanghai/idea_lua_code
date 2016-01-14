@@ -303,7 +303,7 @@ end
 
 
 -----------------------------------------------------------------------------
--- 获取主题帖列表.
+-- 获取主题帖列表.`
 -- @param #string bbsid 论坛id.
 -- @param #string forumid 板块id.
 -- @param #string categoryid 板块分类id.
@@ -401,7 +401,7 @@ function M:getTopicsFromSsdb(bbsid, forumid, categoryid, searchText, filterDate,
     if res then
         for i = 1, #res do
             local key = "social_bbs_topicid_" .. res[i]["id"]
-            local keys = { "id", "title", "categoryName", "personId", "personName", "createTime", "replyCount", "viewCount", "lastPostId", "lastPostName", "replyerTime", "replyerPersonName", "bTop", "bBest", "forumId" }
+            local keys = { "id", "title", "categoryName", "personId", "personName", "identityId","createTime", "replyCount", "viewCount", "lastPostId", "lastPostName", "replyerTime", "replyerPersonName", "bTop", "bBest", "forumId" }
             local _result = db:multi_hget(key, unpack(keys))
             util:log_r_keys(key, "multi_hget")
             log.debug("从ssdb中取出的数据")
@@ -415,6 +415,7 @@ function M:getTopicsFromSsdb(bbsid, forumid, categoryid, searchText, filterDate,
                 t.title = _topic.title;
                 t.category_name = _topic.categoryName
                 t.person_id = _topic.personId;
+                t.identityId = _topic.identityId
                 t.person_name = _topic.personName
                 t.create_time = _topic.createTime;
                 t.replyer_count = _topic.replyCount

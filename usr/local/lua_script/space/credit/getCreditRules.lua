@@ -13,7 +13,7 @@ local cjson = require "cjson"
 local ssdblib = require "resty.ssdb"
 local mysqllib = require "resty.mysql"
 local TS = require "resty.TS"
-
+local log = require "social.common.log"
 --post args
 local request_method = ngx.var.request_method
 local args,err
@@ -28,28 +28,19 @@ if not args then
     return
 end
 
-local register_id = args["register_id"]
-local person_id = args["person_id"]
-local identity_id = args["identity_id"]
+local page_number = args["page_number"]
+local page_size = args["page_size"]
 
-if not register_id or len(register_id) == 0 or 
-    not person_id or len(person_id) == 0 or 
-    not identity_id or len(identity_id) == 0 or 
-    not title or len(title) == 0 or 
-    not content or len(content) == 0 or 
-    not notice_type or len(notice_type) == 0 then
+if not page_number or len(page_number) == 0 or tonumber(page_number) == nil or tonumber(page_size) == nil or
+    not page_size or len(page_size) == 0 then
 	say("{\"success\":false,\"info\":\"参数错误！\"}")
 	return
 end
-
---ssdb
-local ssdb = ssdblib:new()
-local ok, err = ssdb:connect(v_ssdb_ip, v_ssdb_port)
-if not ok then
-    say("{\"success\":false,\"info\":\""..err.."\"}")
-    return
+page_number = tonumber(page_number)
+page_size = tonumber(page_size)
+if not (page_number > 0) then
+    page_number = 0
 end
-
 --mysql
 local mysql, err = mysqllib:new()
 if not mysql then
@@ -68,53 +59,55 @@ if not ok then
     return
 end
 
---default
-category_id = category_id or "-1"
-local create_time = os.date("%Y-%m-%d %H:%M:%S")
-local update_ts = TS.getTs()
-local isql = "INSERT INTO t_social_notice(title, overview, person_id, identity_id, create_time, content, "..
-    "category_id, org_id, org_type, register_id, ts, update_ts, thumbnail, attachments, view_count, b_delete, notice_type, stage_id, stage_name, subject_id, subject_name)"..
-    " VALUES ("..quote(title)..", "..quote(overview)..", "..quote(person_id)..", "..quote(identity_id)..
-    ", "..quote(create_time)..", "..quote(content)..", "..quote(category_id)..", "..quote(org_id)..
-    ", "..quote(org_type)..", "..quote(register_id)..", "..quote(update_ts)..", "..quote(update_ts)..
-    ", "..quote(thumbnail)..", "..quote(attachments)..", 0, 0, "..quote(notice_type)..","..quote(stage_id)..","..quote(stage_name)..","..quote(subject_id)..","..quote(subject_name)..")"
-
-local ir, err = mysql:query(isql)
-if not ir then
+local countsql = "SELECT count(*) as countrow FROM t_social_credit_rule;"
+local countr, err = mysql:query(countsql)
+if not countr then
     say("{\"success\":false,\"info\":\""..err.."\"}")
     return
 end
+total_row = countr[1].countrow
+local rr = {}
 
-local notice_id = ir.insert_id
---发送给接收者
---ngx.log(ngx.ERR,receive_json)
-
---正文插入到ssdb
---base64 encode
-local title_base64 = overview and ngx.encode_base64(title) or ""
-local content_base64 = content and ngx.encode_base64(content) or ""
-local overview_base64 = overview and ngx.encode_base64(overview) or ""
-
-local notice_t = {}
-notice_t.notice_id = notice_id
-notice_t.title = title_base64
-notice_t.overview = overview_base64
-notice_t.person_id = person_id
-notice_t.identity_id = identity_id
-
-local hr, err = ssdb:multi_hset("social_notice_"..notice_id, notice_t)
-if not hr then
+local resultsql = "select id,credit_name from t_social_credit_setting where b_use = 1;"
+local result, err = mysql:query(resultsql)
+if not result then
     say("{\"success\":false,\"info\":\""..err.."\"}")
     return
+end
+local rule_text = ""
+for k,v in pairs(result) do
+    rule_text = rule_text..","..result[k].id
+end
+--[[local title_list = {};
+for k,v in pairs(result) do
+    title_list[result[k].id]=result[k].credit_name
+end]]
+
+if total_row == 0 then
+    rr.total_row = 0;
+    rr.total_page = 0;
+    rr.page_number = page_number;
+    rr.page_size = page_size;
+    rr.rule_list = {};
+else
+    local isql = "SELECT id,rule_name,rule_comment,business_type,cycle_type,reward_num,b_use"..rule_text.." FROM t_social_credit_rule LIMIT "..(page_size*page_number-page_size).."," ..page_size
+    local ir, err = mysql:query(isql)
+    if not ir then
+        say("{\"success\":false,\"info\":\""..err.."\"}")
+        return
+    end
+    rr.rule_list = ir;
+    rr.total_row = total_row;
+    rr.total_page = math.floor((total_row + page_size - 1) / page_size)
+    rr.page_number = page_number;
+    rr.page_size = page_size;
 end
 
 --return
-local rr = {}
 rr.success = true
+rr.title_list = result;
 
-cjson.encode_empty_table_as_object(false)
 say(cjson.encode(rr))
 
 --release
-ssdb:set_keepalive(0,v_pool_size)
 mysql:set_keepalive(0,v_pool_size)
